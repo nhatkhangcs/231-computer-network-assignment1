@@ -2,20 +2,17 @@ from ftplib import FTP
 import threading
 import os
 from icmplib import ping
+import socket
+
 
 class client:
-    localDir = 'local\\'
-    remoteDir = 'uploaded\\'
-    HOME_DIR = "client\\"
+    localDir = 'local/'
+    remoteDir = 'uploaded/'
+    HOME_DIR = "client/"
 
-    def __init__(self, ip, port):
-        self.homeDir = os.getcwd() # get current working directory
-        self.port = port
-        self.ip = ip
-        self.serverIP = None
-        self.serverPort = None
+    def __init__(self, hostname):
+        self.hostname = hostname
         self.session = None
-        self.localRepo = set() # set of files in local repo
     
     ### Methods for creating connection to server ###
     def createConnection(self, serverIP, serverPort):
@@ -24,17 +21,26 @@ class client:
             Returns: A message indicating if the connection was successful
         '''
         self.session =  FTP()
-        self.session.connect(serverIP, serverPort) # connect to server
-        username = input("Enter username: ")
-        password = input("Enter password: ")
         try:
+            self.session.connect(serverIP, serverPort) # connect to server
+            username = input("Enter username: ")
+            password = input("Enter password: ")
             self.session.login(user=username, passwd=password) # login to server
-        except:
-            print("Invalid username or password")
+        except Exception as e:
+            print("Connection failed:", e)
             return
         #create connection to server
         
         #self.threading()
+
+    def closeConnection(self):
+        '''
+            Args: None
+            Returns: A message if connection was closed successfully
+        '''
+
+        self.session.quit()
+        return "Connection closed successfully"
 
     def threading(self):
         '''
@@ -56,16 +62,7 @@ class client:
         '''
         self.session.transfercmd('RETR ' + fileName)
 
-    def closeConnection(self):
-        '''
-            Args: None
-            Returns: A message if connection was closed successfully
-        '''
-
-        self.session.quit()
-        return "Connection closed successfully"
-        
-
+    
     ### Methods for client to interact with server and other clients ###
     def repoInfo(self):
         '''
@@ -74,6 +71,9 @@ class client:
         '''
         self.session.cwd(client.HOME_DIR + client.remoteDir)
         files = self.session.retrlines("LIST")
+        self.session.cwd('../..')
+        if not files:
+            return "No files in remote repo"
         return files
 
     def uploadFile(self, fileName, uploadName):
@@ -84,28 +84,49 @@ class client:
         # print current working directory
         # print(self.session.pwd())
         # check path of current working directory
-        #print(self.homeDir)
+        # print(self.homeDir)
         
         # print files in local directory
+        #print(self.session.pwd())
         self.session.cwd(client.HOME_DIR + client.localDir)
+        #print(self.session.pwd())
         #list files in current working directory
         #print(self.session.retrlines('LIST'))   
         file = open(client.localDir + fileName, 'rb')                  # file to send
         self.session.cwd('..\\'  + client.remoteDir)               # change directory to /pub/
         self.session.storbinary(f'STOR {uploadName}', file)     # send the file
         file.close()                                    # close file and FTP
+        self.session.cwd('../..')
         #self.session.quit()
+        return "File uploaded successfully"
 
     def deleteFileLocal(self, fileName):
         '''
             Args: fileName
             Returns: A message indicating if the file was successfully deleted
         '''
-        self.session.cwd(client.HOME_DIR + client.remoteDir)
-        print(self.session.pwd())
+        self.session.cwd(client.HOME_DIR + client.localDir)
+        #print(self.session.pwd())
         self.session.delete(fileName)
+        self.session.cwd('../..')
+        return "File deleted successfully"
 
-    def downloadFile(self, fileName, saveName):
+    def deleteFileRemote(self, fileName):
+        '''
+            Args: fileName
+            Returns: A message indicating if the file was successfully deleted
+        '''
+        self.session.cwd(client.HOME_DIR + client.remoteDir)
+        try:
+            #print(self.session.pwd())
+            self.session.delete(fileName)
+            self.session.cwd('../..')
+            return "File deleted successfully"
+        except:
+            self.session.cwd('../..')
+            return "File does not exist"
+
+    def downloadFile(self, fileName):
         '''
             Args: fileName
             Returns: A message indicating if the file was successfully downloaded
@@ -115,32 +136,70 @@ class client:
         # List files in "uploaded/"
         uploaded_files = []
         self.session.retrlines('NLST', uploaded_files.append)
-
+        # print(uploaded_files)
         # Download files to "localFile/"
         if fileName in uploaded_files:
             #remote_path = f"uploaded/{fileName}"  # Remote path to the file in "uploaded/"
-            local_path = f"local/{saveName}"    # Local path to save the file
-
+            local_path = f"local/{fileName}"    # Local path to save the file
             with open(local_path, 'wb') as local_file:
                 self.session.retrbinary(f"RETR {fileName}", local_file.write)
+            self.session.cwd('../..')
+            return "File fetched successfully"
+        else:
+            self.session.cwd('../..')
+            return "File does not exist"
+
+    def commandLoop(self):
+        '''
+            Args: None
+            Returns: None
+            Description:
+                The client has a simple command-shell interpreter that is used to accept two kinds of commands.
+                – publish lname fname: a local file (which is stored in the client’s file system at lname) is added to the
+                client’s repository as a file named fname and this information is conveyed to the server.
+                – fetch fname: fetch some copy of the target file and add it to the local repository
+        '''
+        while True:
+            command = input("Enter a command: ")
+            command = command.split()
+
+            # 2 main commands: publish and fetch
+            if command[0] == 'publish':
+                if (len(command) != 3):
+                    print("Invalid command")
+                    break
+                self.uploadFile(command[1], command[2])
+            elif command[0] == 'fetch':
+                if (len(command) != 2):
+                    print("Invalid command")
+                    break
+                self.downloadFile(command[1])
+
+            # other commands
+            elif command[0] == 'ping':
+                print(self.pingServer())
+            else:
+                print("Invalid command")
+                break
+
+    def pingServer(self):
+        '''
+            Args: None
+            Returns: A message indicating if the server is up or down
+        '''
+        try:
+            #print(self.ip)
+            self.receiveMessage()
+            return "Server is up"
+        except:
+            return "Server is down"
 
             
 
 if __name__ == "__main__":
-    #create client object
-    myclient = client("0.0.0.1", 21)
+    myclient = client('Khang')
     myclient.createConnection("127.0.0.1", 21)
-    print(myclient.receiveMessage())
-    #uploadFileName = input("Upload file name: ")
-    #saveFileName = input("Save file name: ")
-    #myclient.uploadFile(fileName=uploadFileName, uploadName=saveFileName)
-    #myclient.closeConnection()
-    #print(client.repoInfo())
-    #client.uploadFile("kitten.jpg")
-    #client.deleteFile("kitten.jpg")
-    myclient.repoInfo()
-    #client.closeConnection()
-    print(myclient.closeConnection())
-    #print(client.ping("localhost"))
-    #print(client.ping("google.com"))
-    #print(client.ping("
+    print(socket.gethostname())
+    myclient.commandLoop()
+    myclient.closeConnection()
+    
