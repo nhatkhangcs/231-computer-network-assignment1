@@ -126,28 +126,31 @@ class client:
             self.session.cwd('../..')
             return "File does not exist"
 
-    def downloadFile(self, fileName):
+    def fetchFile(self, fileName):
         '''
             Args: fileName
             Returns: A message indicating if the file was successfully downloaded
+            Description: Client query to server for file. Server query other clients
+                to see if any other client is keeping the file. If yes, server will
+                choose the client with smallest responding time, and request that
+                client to create a peer-to-peer connection with the client that
+                requested the file. The client that requested the file will then
+                download the file from the other client.
         '''
+        # check if file exists in local repo
+        if os.path.isfile(client.localDir + fileName):
+            return "File already exists in local repo"
+        # check if file exists in remote repo
         self.session.cwd(client.HOME_DIR + client.remoteDir)
+        files = self.session.retrlines("LIST")
+        self.session.cwd('../..')
+        if not files or fileName not in files:
+            return "File does not exist in remote repo"
+        # check if file exists in other clients' repo
+        # if yes, request file from other client
 
-        # List files in "uploaded/"
-        uploaded_files = []
-        self.session.retrlines('NLST', uploaded_files.append)
-        # print(uploaded_files)
-        # Download files to "localFile/"
-        if fileName in uploaded_files:
-            #remote_path = f"uploaded/{fileName}"  # Remote path to the file in "uploaded/"
-            local_path = f"local/{fileName}"    # Local path to save the file
-            with open(local_path, 'wb') as local_file:
-                self.session.retrbinary(f"RETR {fileName}", local_file.write)
-            self.session.cwd('../..')
-            return "File fetched successfully"
-        else:
-            self.session.cwd('../..')
-            return "File does not exist"
+        # 1. Send request to server
+        
 
     def commandLoop(self):
         '''
@@ -173,7 +176,7 @@ class client:
                 if (len(command) != 2):
                     print("Invalid command")
                     break
-                self.downloadFile(command[1])
+                # self.downloadFile(command[1])
 
             # other commands
             elif command[0] == 'ping':

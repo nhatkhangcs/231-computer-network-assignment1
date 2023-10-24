@@ -73,15 +73,50 @@ def ping_thread():
         else:
             print(f"{client_hostname} is down")
 
+def receiveQuery(cmd: str):
+    if cmd.startswith('fetch'):
+        file_name = cmd.split(' ')[1]
+        # ping all clients and record responding time of each client
+        # choose the client with the lowest responding time
+        # download file from that client
+        # if no client is responding, print error message
+        clients = [client for client in authorizer.user_table.keys() if client != '1']
+        response_times = {}
+        for client in clients:
+            if ping_client_by_hostname(client):
+                ping_result = ping(target=client, count=1)
+                response_times[client] = ping_client_by_hostname(client)
+        print(response_times)
+        # find client with lowest responding time
+        min_response_time = float('inf')
+        min_response_client = None
+
+        for client, response_time in response_times.items():
+            if response_time < min_response_time:
+                min_response_time = response_time
+                min_response_client = client
+
+        if min_response_client is None:
+            print("No client is responding")
+            return
+        
+        # redirect to client with lowest responding time
+        print(f"Redirecting to {min_response_client}")
+
+        # create a socket object
+        clientsocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        
+
 if __name__ == "__main__":
+    clients = {}
     ping_thread2 = Thread(target=ping_thread)
     ping_thread1 = Thread(target=server.serve_forever)
-    Threads = [ping_thread1, ping_thread2]
+    ping_thread3 = Thread(target=receiveQuery)
+    Threads = [ping_thread1, ping_thread2, ping_thread3]
 
     for thread in Threads:
         thread.start()
     
     for thread in Threads:
         thread.join()
-
 
