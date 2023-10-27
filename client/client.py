@@ -1,8 +1,7 @@
-from ftplib import FTP
-import threading
 import os
-from icmplib import ping
+from threading import Thread
 import socket
+
 
 
 class client:
@@ -12,20 +11,16 @@ class client:
 
     def __init__(self, hostname):
         self.hostname = hostname
-        self.session = None
-    
+        self.session = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
     ### Methods for creating connection to server ###
     def createConnection(self, serverIP, serverPort):
         '''
             Args: serverIP, serverPort
             Returns: A message indicating if the connection was successful
         '''
-        self.session =  FTP()
         try:
-            self.session.connect(serverIP, serverPort) # connect to server
-            username = input("Enter username: ")
-            password = input("Enter password: ")
-            self.session.login(user=username, passwd=password) # login to server
+            self.session.connect((serverIP, serverPort))
         except Exception as e:
             print("Connection failed:", e)
             return
@@ -39,7 +34,7 @@ class client:
             Returns: A message if connection was closed successfully
         '''
 
-        self.session.quit()
+        self.session.close()
         return "Connection closed successfully"
 
     def threading(self):
@@ -48,67 +43,54 @@ class client:
             Returns: None
         '''
 
-    def receiveMessage(self):
-        '''
-            Args: None
-            Returns: A message indicating if the message was successfully received
-        '''
-        return(self.session.getwelcome())
-
     def sendFile(self, fileName):
         '''
             Args: fileName
             Returns: A message indicating if the file was successfully sent
         '''
-        self.session.transfercmd('RETR ' + fileName)
+        try:
+            if fileName not in os.listdir(self.HOME_DIR):
+                return "File not found"
+            with open(fileName) as f:
+                self.session.sendall(f.read())
+            return "File sent successfully"
+        except Exception as e:
+            print(e)
+            return "File not sent"
 
-    
     ### Methods for client to interact with server and other clients ###
     def repoInfo(self):
         '''
             Args: None
             Returns: list of files in local repo
         '''
-        self.session.cwd(client.HOME_DIR + client.remoteDir)
-        files = self.session.retrlines("LIST")
-        self.session.cwd('../..')
-        if not files:
-            return "No files in remote repo"
-        return files
+        return os.listdir(self.localDir)
+        
 
     def uploadFile(self, fileName, uploadName):
         '''
             Args: fileName
             Returns: A message indicating if the file was successfully uploaded
         '''
-        # print current working directory
-        # print(self.session.pwd())
-        # check path of current working directory
-        # print(self.homeDir)
         
-        # print files in local directory
-        #print(self.session.pwd())
-        self.session.cwd(client.HOME_DIR + client.localDir)
-        #print(self.session.pwd())
-        #list files in current working directory
-        #print(self.session.retrlines('LIST'))   
-        file = open(client.localDir + fileName, 'rb')                  # file to send
-        self.session.cwd('..\\'  + client.remoteDir)               # change directory to /pub/
-        self.session.storbinary(f'STOR {uploadName}', file)     # send the file
-        file.close()                                    # close file and FTP
-        self.session.cwd('../..')
-        #self.session.quit()
-        return "File uploaded successfully"
+        try:
+            # from local to remote
+            with open(self.localDir + fileName, 'rb') as f:
+                # copy file to remote
+                with open(self.remoteDir + uploadName, 'wb') as f2:
+                    f2.write(f.read())
+            return "File uploaded successfully"
+        except Exception as e:
+            print(e)
+            return "File not uploaded"
+
 
     def deleteFileLocal(self, fileName):
         '''
             Args: fileName
             Returns: A message indicating if the file was successfully deleted
         '''
-        self.session.cwd(client.HOME_DIR + client.localDir)
-        #print(self.session.pwd())
-        self.session.delete(fileName)
-        self.session.cwd('../..')
+        
         return "File deleted successfully"
 
     def deleteFileRemote(self, fileName):
@@ -116,15 +98,7 @@ class client:
             Args: fileName
             Returns: A message indicating if the file was successfully deleted
         '''
-        self.session.cwd(client.HOME_DIR + client.remoteDir)
-        try:
-            #print(self.session.pwd())
-            self.session.delete(fileName)
-            self.session.cwd('../..')
-            return "File deleted successfully"
-        except:
-            self.session.cwd('../..')
-            return "File does not exist"
+        
 
     def fetchFile(self, fileName):
         '''
@@ -137,20 +111,25 @@ class client:
                 requested the file. The client that requested the file will then
                 download the file from the other client.
         '''
-        # check if file exists in local repo
-        if os.path.isfile(client.localDir + fileName):
-            return "File already exists in local repo"
-        # check if file exists in remote repo
-        self.session.cwd(client.HOME_DIR + client.remoteDir)
-        files = self.session.retrlines("LIST")
-        self.session.cwd('../..')
-        if not files or fileName not in files:
-            return "File does not exist in remote repo"
-        # check if file exists in other clients' repo
-        # if yes, request file from other client
-
-        # 1. Send request to server
+        #print(self.repoInfo())
         
+        if fileName in self.repoInfo():
+            print("File already exists")
+
+        else:
+            file = open(self.remoteDir + fileName, 'rb')
+            # copy file to remote
+            filesize = os.path.getsize(self.remoteDir + fileName)
+            self.session.send(fileName.encode())
+
+            print(fileName, filesize)
+            self.session.send(str(filesize).encode())
+            data = file.read()
+            self.session.sendall(data)
+            self.session.sendall(b"<END>")
+            file.close()
+            return "File downloaded successfully"
+
 
     def commandLoop(self):
         '''
@@ -163,7 +142,7 @@ class client:
                 – fetch fname: fetch some copy of the target file and add it to the local repository
         '''
         while True:
-            command = input("Enter a command: ")
+            command = input(">>> ")
             command = command.split()
 
             # 2 main commands: publish and fetch
@@ -175,34 +154,21 @@ class client:
             elif command[0] == 'fetch':
                 if (len(command) != 2):
                     print("Invalid command")
-                    break
-                # self.downloadFile(command[1])
+                    continue
+                self.fetchFile(command[1])
 
-            # other commands
-            elif command[0] == 'ping':
-                print(self.pingServer())
-            else:
-                print("Invalid command")
-                break
-
-    def pingServer(self):
-        '''
-            Args: None
-            Returns: A message indicating if the server is up or down
-        '''
-        try:
-            #print(self.ip)
-            self.receiveMessage()
-            return "Server is up"
-        except:
-            return "Server is down"
-
-            
 
 if __name__ == "__main__":
     myclient = client('Khang')
-    myclient.createConnection("127.0.0.1", 21)
-    print(socket.gethostname())
-    myclient.commandLoop()
+    
+    ping_thread2 = Thread(target=myclient.createConnection("192.168.1.5", 1233))
+    ping_thread1 = Thread(target=myclient.commandLoop())
+
+    threads = [ping_thread1, ping_thread2]
+    for thread in threads:
+        thread.start()
+
+    for thread in threads:
+        thread.join()
     myclient.closeConnection()
     
