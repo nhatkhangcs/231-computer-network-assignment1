@@ -220,7 +220,7 @@ def main():
         client.start()
     except Exception as e:
         client.close()
-        print(f'Exception] Caught exception in the process: {e}')
+        print(f'[Exception] Caught exception in the process: {e}')
     except KeyboardInterrupt as k:
         client.close()
 
