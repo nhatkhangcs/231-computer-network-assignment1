@@ -102,9 +102,9 @@ class Server:
             if data == '':
                 continue
             if data == 'fetch':
-                response = self.fetch(client_address, [])
+                response = self.respond_fetch(client_address, [])
             elif data == 'publish':
-                response = self.publish(client_address, [])
+                response = self.respond_publish(client_address, [])
 
             client_socket.send(response.encode())
 
