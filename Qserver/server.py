@@ -109,7 +109,7 @@ class Server:
             client_socket.send(response.encode())
 
 
-    def fetch(self, client_address, arguments):
+    def respond_fetch(self, client_address, arguments):
         """
             @ Description: This function returns the list of peers' address that the client can connect to download 
             @ Input: None
@@ -135,7 +135,7 @@ class Server:
             return upload_address[0] + ' ' + str(upload_address[1])
             
 
-    def publish(self, client_address, arguments):
+    def respond_publish(self, client_address, arguments):
         """
             @ Description: This process the client's 'publish' command and send a response to acknowledge the client
             @ Input: None
