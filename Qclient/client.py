@@ -59,7 +59,6 @@ class Client():
 
         # second connect to server
         self.server_listen_sock.connect((self.host, self.port))
-        print('Listening address: ' + self.server_listen_sock.getsockname()[0] + ' ' + str(self.server_listen_sock.getsockname()[1]))
 
         # tell the server which original connection this connection belongs to
         # tell the server the downloading address that other clients can reach out to
@@ -67,6 +66,7 @@ class Client():
                             ' ' + self.upload_sock.getsockname()[0] + ' ' + str(self.upload_sock.getsockname()[1])
         self.server_listen_sock.send(send_data.encode())
         print('Sending address: ' + self.server_send_sock.getsockname()[0] + ' ' + str(self.server_send_sock.getsockname()[1]))
+        print('Listening address: ' + self.server_listen_sock.getsockname()[0] + ' ' + str(self.server_listen_sock.getsockname()[1]))
         print('Upload address: ' + self.upload_sock.getsockname()[0] + ' ' + str(self.upload_sock.getsockname()[1]))
     
     def listen_server(self):

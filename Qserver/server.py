@@ -2,7 +2,7 @@ import socket
 import threading
 
 from config import args
-from typing import List
+from typing import List, Dict
 import re
 
 class Server:     
@@ -16,7 +16,9 @@ class Server:
         self.handling_threads: List[threading.Thread] = [None] * args.MAX_CLIENTS
 
         self.num_current_clients = 0
-        self.client_infos = {}
+        # key: The address that client send requests ((IP, port))
+        # value: ClientInfo object
+        self.client_infos  = {}
         self.clients_buffer = {}
 
     def start(self):
@@ -187,35 +189,35 @@ class Server:
             command = splited_command[0]
             arguments = splited_command[1:]
 
-            address = arguments[0]
+            IP = arguments[0]
             port = arguments[1]
 
             pattern = r'^(?:\d{1,3}\.){3}\d{1,3}$'
-            matched = re.search(pattern, address)
+            matched = re.search(pattern, IP)
             if not matched:
                 print('Invalid IP address format!')
                 continue
         
-            ip_fields = list(map(lambda s: int(s), address.split('.')))
+            ip_fields = list(map(lambda s: int(s), IP.split('.')))
             valid_fields = all(ip_field >= 0 and ip_field <= 255 for ip_field in ip_fields)
             if not valid_fields:
                 print('Invalid IP address\'s fields!')
                 continue
 
             pattern = r'^\d+$'
-            matched = re.search(pattern, address)
+            matched = re.search(pattern, IP)
             if not matched:
                 print('Invalid port number format!')
                 continue
 
             if command == 'ping':
-                self.ping(address, port)
+                self.ping(IP, port)
             elif command == 'discover':
-                self.discover(address, port)
+                self.discover(IP, port)
 
 
     
-    def ping(self, address, port):
+    def ping(self, IP, port):
         """
             @ Description: This function pings the client, with timeout
             @ Input: None
@@ -225,7 +227,7 @@ class Server:
         # TODO: ping the client and wait for response with timeout
         pass
 
-    def discover(self, address, port):
+    def discover(self, IP, port):
         """
             @ Description: This function discover the client
             @ Input: None
@@ -246,13 +248,14 @@ class ClientInfo():
         self.listening_thread = listening_thread
         self.files = files
 
-    def set_info(self, identifying_address, identifying_sock, sending_address, sending_sock, upload_address, listening_thread):
+    def set_info(self, identifying_address, identifying_sock, sending_address, sending_sock, upload_address, listening_thread, files):
         self.identifying_address = identifying_address
         self.identifying_sock = identifying_sock
         self.sending_address = sending_address
         self.sending_sock = sending_sock
         self.upload_address = upload_address
         self.listening_thread = listening_thread
+        self.files
 
 def main():
     server = Server()
