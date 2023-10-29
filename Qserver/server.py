@@ -20,6 +20,12 @@ class Server:
         self.clients_buffer = {}
 
     def start(self):
+        """
+            @ Description: This function starts all the threads parallelly and wait for joining
+            @ Input: None
+            @ Return: None
+            @ Output: None
+        """
         self.listening_thread.start()
         self.cmd_thread.start()
 
@@ -27,6 +33,13 @@ class Server:
         self.listening_thread.join()
 
     def serve_forever(self):
+        """
+            @ Description: This function listens for all incoming connection request from clients and start serving clients
+                after having enough information
+            @ Input: None
+            @ Return: None
+            @ Output: After having enought information, start a thread to listen to that client immediately
+        """
         while True:
             client_socket, client_address = self.sock.accept()
 
@@ -77,6 +90,12 @@ class Server:
 
 
     def serve_client(self, client_socket: socket.socket, client_address):
+        """
+            @ Description: This function listen for clients requests and respond to them
+            @ Input: None
+            @ Return: None
+            @ Output: None
+        """
         # TODO: below are just mock codes for it to work, please modify them
         while True:
             data = client_socket.recv(1024).decode()
@@ -91,6 +110,16 @@ class Server:
 
 
     def fetch(self, client_address, arguments):
+        """
+            @ Description: This function returns the list of peers' address that the client can connect to download 
+            @ Input: None
+            @ Return: the list of peers for downloading, in the form
+                <upload peer 1 IP> <upload peer 1 port> <upload peer 2 IP> <upload peer 2 port> ...
+                with  <upload peer i IP> <upload peer i port> correspond to the file i. IF a file doesn't exist, put 'null'
+                in <upload peer i IP> and <upload peer i port>
+            @ Output: None
+        """
+        # TODO: below are just mock codes for it to work, please modify them
         found = False
         found_address = None
         for address in self.client_infos.keys():
@@ -107,12 +136,31 @@ class Server:
             
 
     def publish(self, client_address, arguments):
+        """
+            @ Description: This process the client's 'publish' command and send a response to acknowledge the client
+            @ Input: None
+            @ Return: the response in string data type
+            @ Output: Update the files data structure of the corresponding ClientInfo object
+        """
+        # TODO: below are just mock codes for it to work, please modify them
         return 'Server sucessfully recieved your publish request'
 
     def close(self):
+        """
+            @ Description: This function close all sockets
+            @ Input: None
+            @ Return: None
+            @ Output: None
+        """
         self.sock.close()
 
     def cmd_forever(self):
+        """
+            @ Description: This function listens forever for the user input
+            @ Input: None
+            @ Return: None
+            @ Output: Execute the all the valid incoming inputs
+        """
         while True:
             input_str = input('>> ')
             pattern = r'^\s*\b(?:discover|ping)\b'
@@ -168,21 +216,35 @@ class Server:
 
     
     def ping(self, address, port):
+        """
+            @ Description: This function pings the client, with timeout
+            @ Input: None
+            @ Return: None
+            @ Output: print the response to the screen
+        """
         # TODO: ping the client and wait for response with timeout
         pass
 
     def discover(self, address, port):
+        """
+            @ Description: This function discover the client
+            @ Input: None
+            @ Return: None
+            @ Output: print the response to the screen
+        """
         # TODO: discover the client
         pass
 
+
 class ClientInfo():
-    def __init__(self, identifying_address=None, identifying_sock=None, sending_address=None, sending_sock=None, upload_address=None, listening_thread=None):
+    def __init__(self, identifying_address=None, identifying_sock=None, sending_address=None, sending_sock=None, upload_address=None, listening_thread=None, files=None):
         self.identifying_address = identifying_address
         self.identifying_sock = identifying_sock
         self.sending_address = sending_address
         self.sending_sock = sending_sock
         self.upload_address = upload_address
         self.listening_thread = listening_thread
+        self.files = files
 
     def set_info(self, identifying_address, identifying_sock, sending_address, sending_sock, upload_address, listening_thread):
         self.identifying_address = identifying_address
