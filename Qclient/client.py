@@ -6,7 +6,7 @@ from typing import List
 import re
 
 class Client():
-    def __init__(self, host='localhost', port=50000) -> None:
+    def __init__(self, host='localhost', port=50005) -> None:
         self.server_listen_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_send_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.upload_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -34,17 +34,19 @@ class Client():
     def setup(self):
         # first connect to server
         self.server_send_sock.connect((self.host, self.port))
+        self.server_send_sock.send('NONE'.encode())
 
         # second connect to server
         self.server_listen_sock.connect((self.host, self.port))
+        print('Listening address: ' + self.server_listen_sock.getsockname()[0] + ' ' + str(self.server_listen_sock.getsockname()[1]))
 
         # tell the server which original connection this connection belongs to
-        client_identifier = self.server_send_sock.getsockname()[0] + ' ' + str(self.server_listen_sock.getsockname()[1])
-        self.server_listen_sock.send(client_identifier.encode())
-
         # tell the server the downloading address that other clients can reach out to
-        client_upload_address = self.upload_sock.getsockname()[0] + ' ' + str(self.upload_sock.getsockname()[1])
-        self.server_listen_sock.send(client_upload_address.encode())
+        send_data = self.server_send_sock.getsockname()[0] + ' ' + str(self.server_send_sock.getsockname()[1]) + \
+                            ' ' + self.upload_sock.getsockname()[0] + ' ' + str(self.upload_sock.getsockname()[1])
+        self.server_listen_sock.send(send_data.encode())
+        print('Sending address: ' + self.server_send_sock.getsockname()[0] + ' ' + str(self.server_send_sock.getsockname()[1]))
+        print('Upload address: ' + self.upload_sock.getsockname()[0] + ' ' + str(self.upload_sock.getsockname()[1]))
     
     def listen_server(self):
         while True:
@@ -102,11 +104,15 @@ class Client():
 
     def publish(self, arguments):
         # TODO: publish file from local to repo here
-        pass
+        self.server_send_sock.send('publish'.encode())
+        response = self.server_send_sock.recv(1024).decode()
+        print(response)
 
     def fetch(self, arguments):
         # TODO: request fetching files from server and open socket, threads to download here
-        pass
+        self.server_send_sock.send('fetch'.encode())
+        response = self.server_send_sock.recv(1024).decode()
+        print(response)
 
 
     def respond_ping(self) -> str:
