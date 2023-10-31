@@ -1,0 +1,2 @@
+class args:
+    MAX_PARALLEL_DOWNLOADS = 20
