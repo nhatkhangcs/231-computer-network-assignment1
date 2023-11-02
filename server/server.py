@@ -213,7 +213,7 @@ class Server:
             if command == 'ping':
                 self.ping(IP, int(port))
             elif command == 'discover':
-                self.discover(IP, port)
+                self.discover(IP, int(port))
 
 
     
@@ -227,7 +227,6 @@ class Server:
         # TODO: ping the client and wait for response with timeout
         address = (IP, port)
         if address in self.client_infos.keys():
-            print('Client is online')
             # retrieve the client info
             client_info = self.client_infos[address]
             # send ping to sending_socket
@@ -246,8 +245,18 @@ class Server:
             @ Output: print the response to the screen
         """
         # TODO: discover the client
+        address = (IP, port)
+        if address in self.client_infos.keys():
+            # retrieve the client info
+            client_info = self.client_infos[address]
+            # send ping to sending_socket
+            client_info.get_socket().send('discover'.encode())
+            # wait for response
+            response = client_info.get_socket().recv(1024).decode()
+            print(response)
+        else:
+            print('Client is offline')
         
-        pass
 
 
 class ClientInfo():

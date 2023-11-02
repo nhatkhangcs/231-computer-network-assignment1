@@ -1,6 +1,6 @@
 import socket
 import threading
-
+import os
 from config import args
 from typing import List
 import re
@@ -196,8 +196,8 @@ class Client():
         """
         # TODO: respond to server <discover> message here
         # retrieve all files in client/repo
-        
-        pass
+        dir_list = os.listdir("repo")
+        self.server_listen_sock.sendall(' '.join(dir_list).encode())
 
     def close(self):
         """
