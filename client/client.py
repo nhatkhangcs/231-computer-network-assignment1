@@ -62,9 +62,13 @@ class Client():
 
         # tell the server which original connection this connection belongs to
         # tell the server the downloading address that other clients can reach out to
+    
+        dir_list = os.listdir("repo")
         send_data = self.server_send_sock.getsockname()[0] + ' ' + str(self.server_send_sock.getsockname()[1]) + \
-                            ' ' + self.upload_sock.getsockname()[0] + ' ' + str(self.upload_sock.getsockname()[1])
+                            ' ' + self.upload_sock.getsockname()[0] + ' ' + str(self.upload_sock.getsockname()[1]) + \
+                            ' ' + ' '.join(dir_list)
         self.server_listen_sock.send(send_data.encode())
+
         print('Sending address: ' + self.server_send_sock.getsockname()[0] + ' ' + str(self.server_send_sock.getsockname()[1]))
         print('Listening address: ' + self.server_listen_sock.getsockname()[0] + ' ' + str(self.server_listen_sock.getsockname()[1]))
         print('Upload address: ' + self.upload_sock.getsockname()[0] + ' ' + str(self.upload_sock.getsockname()[1]))
@@ -78,7 +82,7 @@ class Client():
         """
         while True:
             data = self.server_listen_sock.recv(1024).decode()
-            print('Received:', data)
+            # print('Received:', data)
             if data == '':
                 continue
             elif data == 'ping':
@@ -155,11 +159,18 @@ class Client():
             @ Output: Execute the 'publish' command and receive respond from the server
         """
         # TODO: below are just mock codes for it to work, please modify them
-        self.server_send_sock.send('publish'.encode())
-        response = self.server_send_sock.recv(1024).decode()
-        print(response)
+        # self.server_send_sock.send('publish'.encode())
+        # response = self.server_send_sock.recv(1024).decode()
+        # print(response)
 
-    def fetch(self, arguments):
+        # send file from client/local to client/repo
+        with open("local/" + arguments[0], "rb") as f:
+            with open("repo/" + arguments[1], "wb") as f1:
+                f1.write(f.read())
+
+        print("File published successfully!")
+
+    def fetch(self, argument):
         """
             @ Description: This function execute the 'fetch' command (multithreaded)
             @ Input: arguments - the list of file names to download, comes in the form
@@ -172,9 +183,34 @@ class Client():
                 <upload peer 1 IP> <upload peer 1 port> <upload peer 2 IP> <upload peer 2 port> ...
                 with  <upload peer i IP> <upload peer i port> correspond to the file i
         """
+        
         # TODO: below are just mock codes for it to work, please modify them
-        self.server_send_sock.send('fetch'.encode())
+        filename = argument[0]
+        fetch_cmd = 'fetch ' + filename
+        self.server_send_sock.send(fetch_cmd.encode())
         response = self.server_send_sock.recv(1024).decode()
+
+        # create socket with response
+        response = response.split()
+        p2p_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        p2p_sock.bind(('localhost', 0))
+        p2p_thread = threading.Thread(target=self.download, args=(filename, response[0], response[1]))
+        # connect to peer
+        p2p_sock.connect((response[0], int(response[1])))
+
+        # send file name to peer
+        p2p_sock.send(filename.encode())
+        print(response)
+
+    def download(self, file_name, upload_address):
+        """
+            @ Description: This function download the file from other peers
+            @ Input: 
+                1) file_name - the name of the file to download
+                2) upload_address - the address of the peer to download from
+            @ Return: None
+            @ Output: Download the file sucessfully
+        """
 
 
     def respond_ping(self) -> str:

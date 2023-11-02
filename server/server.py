@@ -50,7 +50,9 @@ class Server:
                 data = client_socket.recv(1024).decode()
                 if data != '':
                     break
+            
 
+            # later connection to server from client
             if data != 'NONE':
                 data = data.split()
                 original_IP = data[0]
@@ -59,21 +61,27 @@ class Server:
                 upload_IP = data[2]
                 upload_port = int(data[3])
 
+                repoFiles = data[4:]
+
                 if (original_IP, original_port) not in self.client_infos:
                     self.clients_buffer[(original_IP, original_port)] = ClientInfo(
                         identifying_address=(original_IP, original_port),
                         sending_address=client_address,
                         sending_sock=client_socket,
                         upload_address=(upload_IP, upload_port),
+                        files=repoFiles
                     )
+
                 else:
                     client_info: ClientInfo = self.client_infos[(original_IP, original_port)]
                     client_info.sending_address=client_address
                     client_info.sending_sock=client_socket
                     client_info.upload_address=(upload_IP, upload_port)
                     client_info.listening_thread=threading.Thread(target=self.serve_client, args=[client_info.identifying_sock, client_info.identifying_address], daemon=True)
-
+                    client_info.files=repoFiles
                     client_info.listening_thread.start()
+            
+            # First connection to server from client
             else:
                 if client_address not in self.clients_buffer:
                     self.client_infos[client_address] = ClientInfo(
@@ -81,6 +89,7 @@ class Server:
                         identifying_sock=client_socket,
                         listening_thread=threading.Thread(target=self.serve_client, args=[client_socket, client_address], daemon=True)
                     )
+
                 else:
                     client_info = self.clients_buffer[client_address]
                     client_info.identifying_sock=client_socket
@@ -100,18 +109,21 @@ class Server:
         """
         # TODO: below are just mock codes for it to work, please modify them
         while True:
+            response = None
             data = client_socket.recv(1024).decode()
+            data = data.split(' ')
             if data == '':
                 continue
-            if data == 'fetch':
-                response = self.respond_fetch(client_address, [])
-            elif data == 'publish':
-                response = self.respond_publish(client_address, [])
+            if data[0] == 'fetch':
+                file_name = data[1]
+                response = self.respond_fetch(client_address, file_name, [])
+            # elif data == 'publish':
+                #response = self.respond_publish(client_address, [])
 
             client_socket.send(response.encode())
 
 
-    def respond_fetch(self, client_address, arguments):
+    def respond_fetch(self, client_address, filename, arguments):
         """
             @ Description: This function returns the list of peers' address that the client can connect to download 
             @ Input: None
@@ -122,20 +134,18 @@ class Server:
             @ Output: None
         """
         # TODO: below are just mock codes for it to work, please modify them
-        found = False
         found_address = None
-        for address in self.client_infos.keys():
-            if address != client_address:
-                found = True
-                found_address = address
+        for addr in self.client_infos.keys():
+            if filename in self.client_infos[addr].get_files() and addr != client_address:
+                found_address = addr
                 break
         
-        if not found:
-            return 'Server found no one to connect to you'
+        if found_address:
+            return self.client_infos[found_address].get_upload_addr()[0] + ' ' + str(self.client_infos[found_address].get_upload_addr()[1])
+        
         else:
-            upload_address = self.client_infos[found_address].upload_address
-            return upload_address[0] + ' ' + str(upload_address[1])
-            
+            return 'Server found no one to connect to you'
+        
 
     def respond_publish(self, client_address, arguments):
         """
@@ -280,6 +290,12 @@ class ClientInfo():
 
     def get_socket(self):
         return self.sending_sock
+    
+    def get_files(self):
+        return self.files
+    
+    def get_upload_addr(self):
+        return self.upload_address
 
 def main():
     server = Server()
