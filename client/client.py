@@ -78,6 +78,7 @@ class Client():
         """
         while True:
             data = self.server_listen_sock.recv(1024).decode()
+            print('Received:', data)
             if data == '':
                 continue
             elif data == 'ping':
@@ -87,7 +88,7 @@ class Client():
             else:
                 raise RuntimeError('[Error] WTF was that command: ' + data)
             
-            self.server_listen_sock.send(send_data.encode())
+            # self.server_listen_sock.send(send_data.encode())
 
     def listen_upload(self):
         """
@@ -174,7 +175,6 @@ class Client():
         # TODO: below are just mock codes for it to work, please modify them
         self.server_send_sock.send('fetch'.encode())
         response = self.server_send_sock.recv(1024).decode()
-        print(response)
 
 
     def respond_ping(self) -> str:
@@ -185,7 +185,7 @@ class Client():
             @ Output: None
         """
         # TODO: respond to server <ping> message here
-        pass
+        self.server_listen_sock.sendall('pong'.encode())
 
     def respond_discover(self) -> str:
         """
@@ -195,6 +195,8 @@ class Client():
             @ Output: None
         """
         # TODO: respond to server <discover> message here
+        # retrieve all files in client/repo
+        
         pass
 
     def close(self):
