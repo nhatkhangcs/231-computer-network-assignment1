@@ -1,6 +1,6 @@
 import socket
 import threading
-
+import time
 from config import args
 from typing import List, Dict
 import re
@@ -241,9 +241,20 @@ class Server:
             client_info = self.client_infos[address]
             # send ping to sending_socket
             client_info.get_socket().send('ping'.encode())
+            Time1 = time.time()
+            data = ""
+            while not data:
+                # get latency time
+                latency = time.time() - Time1
+                if latency > 5:
+                    print('Request timed out')
+                    return
+            
+                response = client_info.get_socket().recv(1024).decode()
+                print("Response latency: " + str(int(round(latency * 1000))))
+                print(response)
             # wait for response
-            response = client_info.get_socket().recv(1024).decode()
-            print(response)
+            
         else:
             print('Client is offline')
 
