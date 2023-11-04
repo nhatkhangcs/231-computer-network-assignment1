@@ -51,7 +51,6 @@ class Server:
                 if data != '':
                     break
             
-
             # later connection to server from client
             if data != 'NONE':
                 data = data.split()
@@ -119,8 +118,14 @@ class Server:
                 response = self.respond_fetch(client_address, arguments)
             elif command == 'publish':
                 response = self.respond_publish(client_address, arguments)
+            elif command == 'update':
+                self.respond_update(client_address, arguments)
 
             client_socket.send(response.encode())
+
+    def respond_update(self, client_address, file_names):
+        if client_address in self.client_infos.keys():
+            self.client_infos[client_address].files = file_names
 
 
     def respond_fetch(self, client_address, file_names):

@@ -264,7 +264,9 @@ class Client():
             file.write(data)
         
         sock.close()
-        self.server_send_sock.send(('publish ' + file_name).encode())
+        # need to make sure that server get updated client repo
+        dir_list = os.listdir("repo")
+        self.server_send_sock.send(('update ' + ' '.join(dir_list)).encode())
         print('Downloaded file ' + file_name + ' from ' + upload_address[0] + ' ' + upload_address[1])
 
 
