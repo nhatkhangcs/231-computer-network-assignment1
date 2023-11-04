@@ -109,21 +109,21 @@ class Server:
         """
         # TODO: below are just mock codes for it to work, please modify them
         while True:
-            response = None
             data = client_socket.recv(1024).decode()
-            data = data.split(' ')
             if data == '':
                 continue
-            if data[0] == 'fetch':
-                file_name = data[1]
-                response = self.respond_fetch(client_address, file_name, [])
-            # elif data == 'publish':
-                #response = self.respond_publish(client_address, [])
+            data = data.split(' ')
+            command = data[0]
+            arguments = data[1:]
+            if command == 'fetch':
+                response = self.respond_fetch(client_address, arguments)
+            elif command == 'publish':
+                response = self.respond_publish(client_address, arguments)
 
             client_socket.send(response.encode())
 
 
-    def respond_fetch(self, client_address, filename, arguments):
+    def respond_fetch(self, client_address, file_names):
         """
             @ Description: This function returns the list of peers' address that the client can connect to download 
             @ Input: None
@@ -134,28 +134,32 @@ class Server:
             @ Output: None
         """
         # TODO: below are just mock codes for it to work, please modify them
-        found_address = None
-        for addr in self.client_infos.keys():
-            if filename in self.client_infos[addr].get_files() and addr != client_address:
-                found_address = addr
-                break
+        return_addressess = ''
+        for file_name in file_names:
+            found_address = None
+            for addr in self.client_infos.keys():
+                if file_name in self.client_infos[addr].get_files() and addr != client_address:
+                    found_address = addr
+                    break
+            
+            if found_address:
+                return_addressess += self.client_infos[found_address].get_upload_addr()[0] + ' ' + str(self.client_infos[found_address].get_upload_addr()[1]) + ' '
+            else:
+                return_addressess += 'null null '
         
-        if found_address:
-            return self.client_infos[found_address].get_upload_addr()[0] + ' ' + str(self.client_infos[found_address].get_upload_addr()[1])
-        
-        else:
-            return 'Server found no one to connect to you'
+        return return_addressess.strip()
         
 
-    def respond_publish(self, client_address, arguments):
+    def respond_publish(self, client_address, repo_file_name):
         """
             @ Description: This process the client's 'publish' command and send a response to acknowledge the client
             @ Input: None
             @ Return: the response in string data type
             @ Output: Update the files data structure of the corresponding ClientInfo object
         """
-        # TODO: below are just mock codes for it to work, please modify them
-        return 'Server sucessfully recieved your publish request'
+        if repo_file_name not in self.client_infos[client_address].get_files():
+            self.client_infos[client_address].get_files().append(repo_file_name)
+        return 'success'
 
     def close(self):
         """
@@ -238,7 +242,7 @@ class Server:
         address = (IP, port)
         if address in self.client_infos.keys():
             # retrieve the client info
-            client_info = self.client_infos[address]
+            client_info: ClientInfo = self.client_infos[address]
             # send ping to sending_socket
             client_info.get_socket().send('ping'.encode())
             Time1 = time.time()
@@ -269,7 +273,7 @@ class Server:
         address = (IP, port)
         if address in self.client_infos.keys():
             # retrieve the client info
-            client_info = self.client_infos[address]
+            client_info: ClientInfo = self.client_infos[address]
             # send ping to sending_socket
             client_info.get_socket().send('discover'.encode())
             # wait for response
@@ -299,7 +303,7 @@ class ClientInfo():
         self.listening_thread = listening_thread
         self.files = files
 
-    def get_socket(self):
+    def get_socket(self) -> socket.socket:
         return self.sending_sock
     
     def get_files(self):

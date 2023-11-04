@@ -264,7 +264,6 @@ class Client():
             file.write(data)
         
         sock.close()
-        self.server_send_sock.send(('publish ' + file_name).encode())
         print('Downloaded file ' + file_name + ' from ' + upload_address[0] + ' ' + upload_address[1])
 
 
