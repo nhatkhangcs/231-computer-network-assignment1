@@ -277,7 +277,7 @@ class Client():
             @ Output: None
         """
         # TODO: respond to server <ping> message here
-        self.server_listen_sock.sendall('pong'.encode())
+        self.server_listen_sock.sendall('I\'m online'.encode())
 
     def respond_discover(self) -> str:
         """
