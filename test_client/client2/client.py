@@ -4,9 +4,12 @@ import os
 from config import args
 from typing import List
 import re
+from tqdm import tqdm
+import sys
+import time
 
 class Client():
-    def __init__(self, host='localhost', port=50005) -> None:
+    def __init__(self, host='localhost', port=50004) -> None:
         # the socket to listen to server messages
         self.server_listen_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # the socket to send messages to the server
@@ -25,7 +28,6 @@ class Client():
         # the thread to listen to download requests from other peers
         self.upload_thread = threading.Thread(target=self.listen_upload, daemon=True)
         # the thread to send messages to the server
-        self.server_send_thread = threading.Thread(target=self.cmd_forever, daemon=True)
 
         self.setup()
 
@@ -36,13 +38,9 @@ class Client():
             @ Return: None
             @ Output: None
         """
-        self.server_send_thread.start()
         self.server_listen_thread.start()
         self.upload_thread.start()
-
-        self.server_send_thread.join()
-        self.server_listen_thread.join()
-        self.upload_thread.join()
+        self.cmd_forever()
 
     def setup(self):
         """
@@ -125,6 +123,9 @@ class Client():
         """
         file_size = os.path.getsize('repo/' + file_name)
         download_socket.send(str(file_size).encode())
+        data = ''
+        while not data:
+            data = download_socket.recv(1024).decode()
         with open('repo/' + file_name,'rb') as file:
             data = file.read()
             download_socket.sendall(data)
@@ -168,7 +169,7 @@ class Client():
             elif command == 'fetch':
                 self.fetch(arguments)
 
-                
+            print('\n\n')
 
     def publish(self, arguments):
         """
@@ -207,6 +208,7 @@ class Client():
                 <upload peer 1 IP> <upload peer 1 port> <upload peer 2 IP> <upload peer 2 port> ...
                 with  <upload peer i IP> <upload peer i port> correspond to the file i
         """
+        filenames = list(set(filenames))
         fetch_cmd = 'fetch ' + ' '.join(filenames)
         self.server_send_sock.send(fetch_cmd.encode())
         data = ''
@@ -222,11 +224,14 @@ class Client():
         
         download_threads = []
         for i in range(len(addresses)):
-            download_threads.append(threading.Thread(target=self.download, args=[filenames[i], addresses[i]], daemon=True))
+            download_threads.append(threading.Thread(target=self.download, args=[filenames[i], addresses[i], i], daemon=True))
             download_threads[i].start()
         
         for thread in download_threads:
             thread.join()
+
+        tqdm._instances.clear()
+        sys.stdout.flush()
         # p2p_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # p2p_sock.bind(('localhost', 0))
         # p2p_thread = threading.Thread(target=self.download, args=(filename, response[0], response[1]))
@@ -237,7 +242,7 @@ class Client():
         # p2p_sock.send(filename.encode())
         # print(response)
 
-    def download(self, file_name: str, upload_address: str):
+    def download(self, file_name: str, upload_address: str, position=0):
         """
             @ Description: This function download the file from other peers
             @ Input: 
@@ -249,22 +254,35 @@ class Client():
         if upload_address[0] == 'null' and upload_address[1] == 'null':
             print('Found no peer to download file ' + file_name)
             return
+        
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect((upload_address[0], int(upload_address[1])))
+        try: 
+            sock.connect((upload_address[0], int(upload_address[1])))
+        except ConnectionRefusedError as e:
+            print('Failed to connect to peer ' + upload_address[0] + ' ' + upload_address[1] + ' to download file ' + file_name + ', (peer is offline)')
+            return
+        
         sock.send(file_name.encode())
         data = ''
         while not data:
-            data = sock.recv(1024).decode()
+            data = sock.recv(2048).decode()
         file_size = int(data)
-        data = ''
-        while not data:
-            data = sock.recv(file_size)
-
-        with open('repo/' + file_name, 'wb') as file:
-            file.write(data)
+        sock.send('ready'.encode())
+        with tqdm(total=file_size, desc=file_name, leave=True, unit_scale=True, unit='B', position=position, file=sys.stdout, colour='green') as progess_bar:
+            received_bytes = 0
+            data = b''
+            with open('repo/' + file_name, 'wb') as file:
+                while received_bytes < file_size:
+                    data = sock.recv(65536)
+                    received_bytes += len(data)
+                    progess_bar.update(len(data))
+                    file.write(data)
+                    file.flush()
         
         sock.close()
-        print('Downloaded file ' + file_name + ' from ' + upload_address[0] + ' ' + upload_address[1])
+        # need to make sure that server get updated client repo
+        dir_list = os.listdir("repo")
+        self.server_send_sock.send(('update ' + ' '.join(dir_list)).encode())
 
 
 
@@ -276,7 +294,7 @@ class Client():
             @ Output: None
         """
         # TODO: respond to server <ping> message here
-        self.server_listen_sock.sendall('pong'.encode())
+        self.server_listen_sock.sendall('I\'m online'.encode())
 
     def respond_discover(self) -> str:
         """
@@ -292,11 +310,15 @@ class Client():
 
     def close(self):
         """
-            @ Description: This function close all sockets
+            @ Description: This function close all sockets and notify the server
             @ Input: None
             @ Return: None
             @ Output: None
         """
+        self.server_send_sock.send('close'.encode())
+        data = ''
+        while not data:
+            data = self.server_send_sock.recv(1024).decode()
         self.server_listen_sock.close()
         self.server_send_sock.close()
         self.upload_sock.close()

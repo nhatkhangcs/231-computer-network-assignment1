@@ -6,16 +6,15 @@ from typing import List, Dict
 import re
 
 class Server:     
-    def __init__(self, host='localhost', port=50005) -> None:
+    def __init__(self, host='localhost', port=50004) -> None:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.bind((host, port))
         self.sock.listen(args.MAX_CLIENTS)
+        print(f"Listening on {host} {port}")
 
         self.listening_thread = threading.Thread(target=self.serve_forever, daemon=True)
         self.cmd_thread = threading.Thread(target=self.cmd_forever, daemon=True)
-        self.handling_threads: List[threading.Thread] = [None] * args.MAX_CLIENTS
 
-        self.num_current_clients = 0
         # key: The address that client send requests ((IP, port))
         # value: ClientInfo object
         self.client_infos  = {}
@@ -29,10 +28,8 @@ class Server:
             @ Output: None
         """
         self.listening_thread.start()
-        self.cmd_thread.start()
 
-        self.cmd_thread.join()
-        self.listening_thread.join()
+        self.cmd_forever()
 
     def serve_forever(self):
         """
@@ -116,12 +113,19 @@ class Server:
             arguments = data[1:]
             if command == 'fetch':
                 response = self.respond_fetch(client_address, arguments)
+                client_socket.send(response.encode())
             elif command == 'publish':
                 response = self.respond_publish(client_address, arguments)
+                client_socket.send(response.encode())
             elif command == 'update':
                 self.respond_update(client_address, arguments)
+            elif command == 'close':
+                self.remove_client(client_address)
 
-            client_socket.send(response.encode())
+
+    def remove_client(self, client_address):
+        self.client_infos[client_address].get_identifying_sock().send('OK'.encode())
+        self.client_infos.pop(client_address)
 
     def respond_update(self, client_address, file_names):
         if client_address in self.client_infos.keys():
@@ -257,11 +261,12 @@ class Server:
                 latency = time.time() - Time1
                 if latency > 5:
                     print('Request timed out')
+                    self.client_infos.pop(address)
                     return
             
-                response = client_info.get_socket().recv(1024).decode()
-                print("Response latency: " + str(int(round(latency * 1000))))
-                print(response)
+                data = client_info.get_socket().recv(1024).decode()
+            print("Response latency: " + str(int(round(latency * 1000))))
+            print(data)
             # wait for response
             
         else:
@@ -282,8 +287,9 @@ class Server:
             # send ping to sending_socket
             client_info.get_socket().send('discover'.encode())
             # wait for response
-            response = client_info.get_socket().recv(1024).decode()
-            print(response)
+            response = client_info.get_socket().recv(1024).decode().split()
+            for file in response:
+                print(file)
         else:
             print('Client is offline')
         
@@ -310,6 +316,9 @@ class ClientInfo():
 
     def get_socket(self) -> socket.socket:
         return self.sending_sock
+    
+    def get_identifying_sock(self) -> socket.socket:
+        return self.identifying_sock
     
     def get_files(self):
         return self.files
