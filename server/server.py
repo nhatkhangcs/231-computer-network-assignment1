@@ -2,11 +2,10 @@ import socket
 import threading
 import time
 from config import args
-from typing import List, Dict
 import re
 
 class Server:     
-    def __init__(self, host='localhost', port=50004) -> None:
+    def __init__(self, host='192.168.1.8', port=50004) -> None:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.bind((host, port))
         self.sock.listen(args.MAX_CLIENTS)
@@ -161,6 +160,7 @@ class Server:
                 else:
                     found_address = None
 
+                print("Address to download: ", found_address)
                 if found_address:
                     return_addressess += self.client_infos[found_address].get_upload_addr()[0] + ' ' + str(self.client_infos[found_address].get_upload_addr()[1]) + ' '
                 else:
@@ -344,6 +344,7 @@ def main():
         server.close()
         print(f"[Exception] Caught exception in the process: {e}")
     except KeyboardInterrupt as k:
+        print(k)
         server.close()
 
 if __name__ == '__main__':

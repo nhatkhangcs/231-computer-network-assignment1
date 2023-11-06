@@ -1,22 +1,21 @@
 import socket
 import threading
 import os
-from config import args
-from typing import List
 import re
 from tqdm import tqdm
+from config import args
 import sys
 
 class Client():
-    def __init__(self, host='localhost', port=50004) -> None:
+    def __init__(self, host='192.168.1.8', port=50004) -> None:
         # the socket to listen to server messages
         self.server_listen_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # the socket to send messages to the server
         self.server_send_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # The upload address (listen forever for upload requests)
         self.upload_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.upload_sock.bind(('localhost', 0))
-        self.upload_sock.listen(15)
+        self.upload_sock.bind(('192.168.1.8', 0))
+        self.upload_sock.listen(args.MAX_PARALLEL_DOWNLOADS)
 
         # server info
         self.host = host
@@ -83,9 +82,9 @@ class Client():
             if data == '':
                 continue
             elif data == 'ping':
-                send_data = self.respond_ping()
+                self.respond_ping()
             elif data == 'discover':
-                send_data = self.respond_discover()
+                self.respond_discover()
             else:
                 raise RuntimeError('[Error] WTF was that command: ' + data)
             
@@ -103,15 +102,15 @@ class Client():
         """
         # TODO: forever listen for incoming upload requests, there can be multiple upload requests from a client as the same time
         while True:
-            download_socket, download_address = self.upload_sock.accept()
+            download_socket, _ = self.upload_sock.accept()
             # <file name 1> <file name 2> ... <file name n>
             request_file = ''
             while not request_file:
                 request_file = download_socket.recv(1024).decode()
-            thread = threading.Thread(target=self.upload, args=(request_file, download_address[0], download_address[1], download_socket), daemon=True)
+            thread = threading.Thread(target=self.upload, args=(request_file, download_socket), daemon=True)
             thread.start()
         
-    def upload(self, file_name: str, download_IP: str, download_port: int, download_socket: socket.socket):
+    def upload(self, file_name: str, download_socket: socket.socket):
         """
             @ Description: This function upload the file to other peers
             @ Input: 
@@ -230,15 +229,6 @@ class Client():
 
         sys.stdout.flush()
         print('\n\n')
-        # p2p_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # p2p_sock.bind(('localhost', 0))
-        # p2p_thread = threading.Thread(target=self.download, args=(filename, response[0], response[1]))
-        # # connect to peer
-        # p2p_sock.connect((response[0], int(response[1])))
-
-        # # send file name to peer
-        # p2p_sock.send(filename.encode())
-        # print(response)
 
     def download(self, file_name: str, upload_address: str, position = 0):
         """
@@ -258,6 +248,7 @@ class Client():
             sock.connect((upload_address[0], int(upload_address[1])))
         except ConnectionRefusedError as e:
             print('Failed to connect to peer ' + upload_address[0] + ' ' + upload_address[1] + ' to download file ' + file_name + ', (peer is offline)')
+            print(e)
             return
         
         sock.send(file_name.encode())
@@ -302,7 +293,7 @@ class Client():
             @ Return: The reponse with string datatype
             @ Output: None
         """
-        # TODO: respond to server <discover> message here
+
         # retrieve all files in client/repo
         dir_list = os.listdir("repo")
         self.server_listen_sock.sendall(' '.join(dir_list).encode())
@@ -336,6 +327,7 @@ def main():
         client.close()
         print(f'[Exception] Caught exception in the process: {e}')
     except KeyboardInterrupt as k:
+        print(k)
         client.close()
 
 if __name__ == '__main__':
