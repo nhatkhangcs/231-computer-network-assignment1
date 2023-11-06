@@ -144,17 +144,27 @@ class Server:
         """
         # TODO: below are just mock codes for it to work, please modify them
         return_addressess = ''
+        total_client_list = {}
         for file_name in file_names:
-            found_address = None
+            avail_list = []
             for addr in self.client_infos.keys():
                 if file_name in self.client_infos[addr].get_files() and addr != client_address:
-                    found_address = addr
-                    break
+                    avail_list.append(addr)
             
-            if found_address:
-                return_addressess += self.client_infos[found_address].get_upload_addr()[0] + ' ' + str(self.client_infos[found_address].get_upload_addr()[1]) + ' '
-            else:
-                return_addressess += 'null null '
+            total_client_list.update({file_name: avail_list})
+            
+        if total_client_list:
+            for file_name in total_client_list.keys():
+                if total_client_list[file_name]:
+                    # find address with minimum number of files in repo directory
+                    found_address = min(total_client_list[file_name], key=lambda addr: len(self.client_infos[addr].get_files()))
+                else:
+                    found_address = None
+
+                if found_address:
+                    return_addressess += self.client_infos[found_address].get_upload_addr()[0] + ' ' + str(self.client_infos[found_address].get_upload_addr()[1]) + ' '
+                else:
+                    return_addressess += 'null null '
         
         return return_addressess.strip()
         

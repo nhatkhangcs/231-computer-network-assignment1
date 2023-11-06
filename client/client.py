@@ -240,7 +240,7 @@ class Client():
         # p2p_sock.send(filename.encode())
         # print(response)
 
-    def download(self, file_name: str, upload_address: str, position):
+    def download(self, file_name: str, upload_address: str, position = 0):
         """
             @ Description: This function download the file from other peers
             @ Input: 
