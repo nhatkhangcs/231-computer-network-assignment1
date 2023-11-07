@@ -5,7 +5,7 @@ from config import args
 import re
 
 class Server:     
-    def __init__(self, host='192.168.1.8', port=50004) -> None:
+    def __init__(self, host='localhost', port=50004) -> None:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.bind((host, port))
         self.sock.listen(args.MAX_CLIENTS)
@@ -48,7 +48,7 @@ class Server:
                     break
             
             # later connection to server from client
-            if data != 'NONE':
+            if data != 'first':
                 data = data.split()
                 original_IP = data[0]
                 original_port = int(data[1])
@@ -120,7 +120,6 @@ class Server:
                 self.remove_client(client_address)
 
     def remove_client(self, client_address: str):
-        self.client_infos[client_address].get_identifying_sock().send('OK'.encode())
         self.client_infos.pop(client_address)
 
     def respond_update(self, client_address: str, file_names: list[str]):
@@ -183,6 +182,9 @@ class Server:
             @ Output: None
         """
         self.sock.close()
+        for address in self.client_infos.keys():
+            self.client_infos[address].get_socket().close()
+            self.client_infos[address].get_identifying_sock().close()
 
     def cmd_forever(self):
         """
@@ -333,12 +335,12 @@ def main():
     server = Server()
     try:
         server.start()
+    except KeyboardInterrupt as k:
+        print("Program interrupted")
+        server.close()
     except Exception as e:
         server.close()
         print(f"[Exception] Caught exception in the process: {e}")
-    except KeyboardInterrupt as k:
-        print(k)
-        server.close()
 
 if __name__ == '__main__':
     main()
