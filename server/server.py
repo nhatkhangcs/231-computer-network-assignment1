@@ -93,9 +93,7 @@ class Server:
                     self.clients_buffer.pop(client_address)
                     client_info.listening_thread.start()
 
-
-
-    def serve_client(self, client_socket: socket.socket, client_address):
+    def serve_client(self, client_socket: socket.socket, client_address: str):
         """
             @ Description: This function listen for clients requests and respond to them
             @ Input: None
@@ -121,17 +119,15 @@ class Server:
             elif command == 'close':
                 self.remove_client(client_address)
 
-
-    def remove_client(self, client_address):
+    def remove_client(self, client_address: str):
         self.client_infos[client_address].get_identifying_sock().send('OK'.encode())
         self.client_infos.pop(client_address)
 
-    def respond_update(self, client_address, file_names):
+    def respond_update(self, client_address: str, file_names: list[str]):
         if client_address in self.client_infos.keys():
             self.client_infos[client_address].files = file_names
 
-
-    def respond_fetch(self, client_address, file_names):
+    def respond_fetch(self, client_address: str, file_names: list[str]):
         """
             @ Description: This function returns the list of peers' address that the client can connect to download 
             @ Input: None
@@ -168,8 +164,7 @@ class Server:
         
         return return_addressess.strip()
         
-
-    def respond_publish(self, client_address, repo_file_name):
+    def respond_publish(self, client_address: str, repo_file_name: str):
         """
             @ Description: This process the client's 'publish' command and send a response to acknowledge the client
             @ Input: None
@@ -247,8 +242,6 @@ class Server:
                 self.ping(IP, int(port))
             elif command == 'discover':
                 self.discover(IP, int(port))
-
-
     
     def ping(self, IP: str, port: int):
         """
@@ -278,18 +271,17 @@ class Server:
             print("Response latency: " + str(int(round(latency * 1000))))
             print(data)
             # wait for response
-            
+
         else:
             print('Client is offline')
 
-    def discover(self, IP, port):
+    def discover(self, IP: str, port: int):
         """
             @ Description: This function discover the client
             @ Input: None
             @ Return: None
             @ Output: print the response to the screen
         """
-        # TODO: discover the client
         address = (IP, port)
         if address in self.client_infos.keys():
             # retrieve the client info
@@ -303,10 +295,10 @@ class Server:
         else:
             print('Client is offline')
         
-
-
 class ClientInfo():
-    def __init__(self, identifying_address=None, identifying_sock=None, sending_address=None, sending_sock=None, upload_address=None, listening_thread=None, files=None):
+    def __init__(self, identifying_address=None, identifying_sock=None, 
+                 sending_address=None, sending_sock=None, upload_address=None, 
+                 listening_thread=None, files=None):
         self.identifying_address = identifying_address
         self.identifying_sock = identifying_sock
         self.sending_address = sending_address
@@ -315,7 +307,8 @@ class ClientInfo():
         self.listening_thread = listening_thread
         self.files = files
 
-    def set_info(self, identifying_address, identifying_sock, sending_address, sending_sock, upload_address, listening_thread, files):
+    def set_info(self, identifying_address, identifying_sock, sending_address, 
+                 sending_sock, upload_address, listening_thread, files):
         self.identifying_address = identifying_address
         self.identifying_sock = identifying_sock
         self.sending_address = sending_address
@@ -330,10 +323,10 @@ class ClientInfo():
     def get_identifying_sock(self) -> socket.socket:
         return self.identifying_sock
     
-    def get_files(self):
+    def get_files(self) -> list[str]:
         return self.files
     
-    def get_upload_addr(self):
+    def get_upload_addr(self) -> str:
         return self.upload_address
 
 def main():

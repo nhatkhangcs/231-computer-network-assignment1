@@ -122,12 +122,12 @@ class Client():
         file_size = os.path.getsize('repo/' + file_name)
         download_socket.send(str(file_size).encode())
         data = ''
+
         while not data:
             data = download_socket.recv(1024).decode()
         with open('repo/' + file_name,'rb') as file:
             data = file.read()
             download_socket.sendall(data)
-
 
     def cmd_forever(self):
         """
@@ -176,24 +176,24 @@ class Client():
             @ Return: None
             @ Output: Execute the 'publish' command and receive respond from the server
         """
-        # TODO: below are just mock codes for it to work, please modify them
-        # self.server_send_sock.send('publish'.encode())
-        # response = self.server_send_sock.recv(1024).decode()
-        # print(response)
-
         # send file from client/local to client/repo
         local_file_name = arguments[0]
         repo_file_name = arguments[1]
+        if local_file_name not in os.listdir("local"):
+            print('File ' + local_file_name + ' does not exist in your local folder!')
+            return
+
         with open("local/" + local_file_name, "rb") as f:
             with open("repo/" + local_file_name, "wb") as f1:
                 f1.write(f.read())
+
         self.server_send_sock.send(('publish ' + repo_file_name).encode())
         data = ''
         while not data:
             data = self.server_send_sock.recv(1024).decode()
         print('Server response: ' + data + '\n')
 
-    def fetch(self, filenames):
+    def fetch(self, filenames: list[str]):
         """
             @ Description: This function execute the 'fetch' command (multithreaded)
             @ Input: arguments - the list of file names to download, comes in the form
@@ -274,8 +274,6 @@ class Client():
         dir_list = os.listdir("repo")
         self.server_send_sock.send(('update ' + ' '.join(dir_list)).encode())
 
-
-
     def respond_ping(self) -> str:
         """
             @ Description: This function responds to the 'ping' message from server
@@ -313,12 +311,6 @@ class Client():
         self.server_send_sock.close()
         self.upload_sock.close()
 
-class File():
-    def __init__(self, file_name, size_in_bytes, owner_address) -> None:
-        self.file_name = file_name
-        self.size_in_bytes = size_in_bytes
-        self.owner_address = owner_address
-
 def main():
     client = Client()
     try:
@@ -329,6 +321,6 @@ def main():
     except KeyboardInterrupt as k:
         print(k)
         client.close()
-
+    
 if __name__ == '__main__':
     main()
