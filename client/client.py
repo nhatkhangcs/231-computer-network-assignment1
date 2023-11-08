@@ -7,19 +7,20 @@ from config import args
 import sys
 
 class Client():
-    def __init__(self, host='192.168.1.14', port=50004) -> None:
+    def __init__(self, server_host='localhost', server_port=50004) -> None:
         # the socket to listen to server messages
         self.server_listen_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # the socket to send messages to the server
         self.server_send_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server_send_sock.settimeout(10)
         # The upload address (listen forever for upload requests)
         self.upload_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.upload_sock.bind(('192.168.1.14', 0))
+        self.upload_sock.bind(('localhost', 0))
         self.upload_sock.listen(args.MAX_PARALLEL_DOWNLOADS)
 
         # server info
-        self.host = host
-        self.port = port
+        self.server_host = server_host
+        self.server_port = server_port
 
         # the thread to listen to server messages
         self.server_listen_thread = threading.Thread(target=self.listen_server, daemon=True)
@@ -49,11 +50,11 @@ class Client():
                 2) Transfer the information about the connection the server (both the first connect address and the upload address)
         """
         # first connect to server
-        self.server_send_sock.connect((self.host, self.port))
-        self.server_send_sock.send('NONE'.encode())
+        self.server_send_sock.connect((self.server_host, self.server_port))
+        self.server_send_sock.send('first'.encode())
 
         # second connect to server
-        self.server_listen_sock.connect((self.host, self.port))
+        self.server_listen_sock.connect((self.server_host, self.server_port))
 
         # tell the server which original connection this connection belongs to
         # tell the server the downloading address that other clients can reach out to
@@ -77,6 +78,7 @@ class Client():
         """
         while True:
             data = self.server_listen_sock.recv(1024).decode()
+
             # print('Received:', data)
             if data == '':
                 continue
@@ -94,12 +96,11 @@ class Client():
             @ Return: None
             @ Output: Create many threads to handle the upload parallelly
             @ Additional notes: the request message comes in the form:
-                <file name 1> <file name 2> ... <file name n>
-                seperated by a space
+                <file name>
         """
+        # TODO: forever listen for incoming upload requests
         while True:
             download_socket, _ = self.upload_sock.accept()
-            # <file name 1> <file name 2> ... <file name n>
             request_file = ''
             while not request_file:
                 request_file = download_socket.recv(1024).decode()
@@ -119,7 +120,7 @@ class Client():
         download_socket.send(str(file_size).encode())
         data = ''
 
-        while not data:
+        while data != 'ready':
             data = download_socket.recv(1024).decode()
         with open('repo/' + file_name,'rb') as file:
             data = file.read()
@@ -134,11 +135,11 @@ class Client():
         """
         while True:
             input_str = input('>> ')
-            pattern = r'^\s*\b(?:publish|fetch)\b'
+            pattern = r'^\s*\b(?:publish|fetch|close)\b'
             matched = re.search(pattern, input_str)
 
             if not matched:
-                print('Invalid command (please use <publish> or <fetch>)!')
+                print('Invalid command (please use <publish> or <fetch> or <close>)!')
                 continue
 
             # remove spaces at the beginning or end
@@ -146,7 +147,11 @@ class Client():
             # remove redundant spaces
             input_str = re.sub(r'\s\s+', ' ', input_str)
 
+
             splited_command = input_str.split()
+            if splited_command[0] == 'close':
+                self.close()
+                break
             if len(splited_command) <= 1:
                 print('Please enter the arguments for the command!')
                 continue
@@ -226,7 +231,7 @@ class Client():
         sys.stdout.flush()
         print('\n\n')
 
-    def download(self, file_name: str, upload_address: str, position = 0):
+    def download(self, file_name: str, upload_address: str, position=0):
         """
             @ Description: This function download the file from other peers
             @ Input: 
@@ -244,7 +249,6 @@ class Client():
             sock.connect((upload_address[0], int(upload_address[1])))
         except ConnectionRefusedError as e:
             print('Failed to connect to peer ' + upload_address[0] + ' ' + upload_address[1] + ' to download file ' + file_name + ', (peer is offline)')
-            print(e)
             return
         
         sock.send(file_name.encode())
@@ -299,10 +303,12 @@ class Client():
             @ Return: None
             @ Output: None
         """
+        self.server_send_sock.settimeout(5)
+        # try:
         self.server_send_sock.send('close'.encode())
-        data = ''
-        while not data:
-            data = self.server_send_sock.recv(1024).decode()
+        self.close_sockets()
+    
+    def close_sockets(self):
         self.server_listen_sock.close()
         self.server_send_sock.close()
         self.upload_sock.close()
@@ -311,12 +317,18 @@ def main():
     client = Client()
     try:
         client.start()
+    except KeyboardInterrupt as k:
+        print('Program interrupted!')
+        client.close()
+    except BrokenPipeError as b:
+        print('Server disconnected!')
+        client.close_sockets()
+    except socket.timeout as t:
+        print("Connection timeout")
+        client.close_sockets()
     except Exception as e:
         client.close()
         print(f'[Exception] Caught exception in the process: {e}')
-    except KeyboardInterrupt as k:
-        print(k)
-        client.close()
     
 if __name__ == '__main__':
     main()

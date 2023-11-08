@@ -5,8 +5,7 @@ from config import args
 import re
 
 class Server:     
-    def __init__(self, host='192.168.1.14', port=50004) -> None:
-        # server socket
+    def __init__(self, host='localhost', port=50004) -> None:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.bind((host, port))
         self.sock.listen(args.MAX_CLIENTS)
@@ -27,6 +26,7 @@ class Server:
             @ Return: None
             @ Output: None
         """
+
         self.listening_thread.start()
         self.cmd_forever()
 
@@ -38,6 +38,7 @@ class Server:
             @ Return: None
             @ Output: After having enought information, start a thread to listen to that client immediately
         """
+
         while True:
             client_socket, client_address = self.sock.accept()
 
@@ -48,7 +49,7 @@ class Server:
                     break
             
             # later connection to server from client
-            if data != 'NONE':
+            if data != 'first':
                 data = data.split()
                 original_IP = data[0]
                 original_port = int(data[1])
@@ -120,7 +121,6 @@ class Server:
                 self.remove_client(client_address)
 
     def remove_client(self, client_address: str):
-        self.client_infos[client_address].get_identifying_sock().send('OK'.encode())
         self.client_infos.pop(client_address)
 
     def respond_update(self, client_address: str, file_names: list[str]):
@@ -171,6 +171,7 @@ class Server:
             @ Return: the response in string data type
             @ Output: Update the files data structure of the corresponding ClientInfo object
         """
+
         if repo_file_name not in self.client_infos[client_address].get_files():
             self.client_infos[client_address].get_files().append(repo_file_name)
         return 'success'
@@ -182,7 +183,11 @@ class Server:
             @ Return: None
             @ Output: None
         """
+        
         self.sock.close()
+        for address in self.client_infos.keys():
+            self.client_infos[address].get_sending_socket().close()
+            self.client_infos[address].get_identifying_sock().close()
 
     def cmd_forever(self):
         """
@@ -191,6 +196,7 @@ class Server:
             @ Return: None
             @ Output: Execute the all the valid incoming inputs
         """
+
         while True:
             input_str = input('>> ')
             pattern = r'^\s*\b(?:discover|ping)\b'
@@ -250,7 +256,7 @@ class Server:
             @ Return: None
             @ Output: print the response to the screen
         """
-        # TODO: ping the client and wait for response with timeout
+
         address = (IP, port)
         if address in self.client_infos.keys():
             # retrieve the client info
@@ -332,12 +338,12 @@ def main():
     server = Server()
     try:
         server.start()
+    except KeyboardInterrupt as k:
+        print("Program interrupted")
+        server.close()
     except Exception as e:
         server.close()
         print(f"[Exception] Caught exception in the process: {e}")
-    except KeyboardInterrupt as k:
-        print(k)
-        server.close()
 
 if __name__ == '__main__':
     main()
