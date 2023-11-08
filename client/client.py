@@ -7,14 +7,14 @@ from config import args
 import sys
 
 class Client():
-    def __init__(self, host='192.168.1.8', port=50004) -> None:
+    def __init__(self, host='192.168.1.14', port=50004) -> None:
         # the socket to listen to server messages
         self.server_listen_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # the socket to send messages to the server
         self.server_send_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # The upload address (listen forever for upload requests)
         self.upload_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.upload_sock.bind(('192.168.1.8', 0))
+        self.upload_sock.bind(('192.168.1.14', 0))
         self.upload_sock.listen(args.MAX_PARALLEL_DOWNLOADS)
 
         # server info
@@ -25,7 +25,6 @@ class Client():
         self.server_listen_thread = threading.Thread(target=self.listen_server, daemon=True)
         # the thread to listen to download requests from other peers
         self.upload_thread = threading.Thread(target=self.listen_upload, daemon=True)
-        # the thread to send messages to the server
 
         self.setup()
 
@@ -87,8 +86,6 @@ class Client():
                 self.respond_discover()
             else:
                 raise RuntimeError('[Error] WTF was that command: ' + data)
-            
-            # self.server_listen_sock.send(send_data.encode())
 
     def listen_upload(self):
         """
@@ -100,7 +97,6 @@ class Client():
                 <file name 1> <file name 2> ... <file name n>
                 seperated by a space
         """
-        # TODO: forever listen for incoming upload requests, there can be multiple upload requests from a client as the same time
         while True:
             download_socket, _ = self.upload_sock.accept()
             # <file name 1> <file name 2> ... <file name n>
@@ -167,8 +163,6 @@ class Client():
             elif command == 'fetch':
                 self.fetch(arguments)
 
-                
-
     def publish(self, arguments):
         """
             @ Description: This function execute the 'publish' command
@@ -188,10 +182,12 @@ class Client():
                 f1.write(f.read())
 
         self.server_send_sock.send(('publish ' + repo_file_name).encode())
+
         data = ''
         while not data:
             data = self.server_send_sock.recv(1024).decode()
         print('Server response: ' + data + '\n')
+
 
     def fetch(self, filenames: list[str]):
         """
@@ -281,7 +277,7 @@ class Client():
             @ Return: The reponse with string datatype
             @ Output: None
         """
-        # TODO: respond to server <ping> message here
+
         self.server_listen_sock.sendall('I\'m online'.encode())
 
     def respond_discover(self) -> str:

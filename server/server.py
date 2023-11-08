@@ -5,7 +5,8 @@ from config import args
 import re
 
 class Server:     
-    def __init__(self, host='192.168.1.8', port=50004) -> None:
+    def __init__(self, host='192.168.1.14', port=50004) -> None:
+        # server socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.bind((host, port))
         self.sock.listen(args.MAX_CLIENTS)
@@ -27,7 +28,6 @@ class Server:
             @ Output: None
         """
         self.listening_thread.start()
-
         self.cmd_forever()
 
     def serve_forever(self):
@@ -100,7 +100,7 @@ class Server:
             @ Return: None
             @ Output: None
         """
-        # TODO: below are just mock codes for it to work, please modify them
+
         while True:
             data = client_socket.recv(1024).decode()
             if data == '':
@@ -137,7 +137,7 @@ class Server:
                 in <upload peer i IP> and <upload peer i port>
             @ Output: None
         """
-        # TODO: below are just mock codes for it to work, please modify them
+
         return_addressess = ''
         total_client_list = {}
         for file_name in file_names:
@@ -156,7 +156,7 @@ class Server:
                 else:
                     found_address = None
 
-                print("Address to download: ", found_address)
+                # print("Address to download: ", found_address)
                 if found_address:
                     return_addressess += self.client_infos[found_address].get_upload_addr()[0] + ' ' + str(self.client_infos[found_address].get_upload_addr()[1]) + ' '
                 else:
@@ -256,7 +256,7 @@ class Server:
             # retrieve the client info
             client_info: ClientInfo = self.client_infos[address]
             # send ping to sending_socket
-            client_info.get_socket().send('ping'.encode())
+            client_info.get_sending_socket().send('ping'.encode())
             Time1 = time.time()
             data = ""
             while not data:
@@ -266,11 +266,10 @@ class Server:
                     print('Request timed out')
                     self.client_infos.pop(address)
                     return
-            
-                data = client_info.get_socket().recv(1024).decode()
+
+                data = client_info.get_sending_socket().recv(1024).decode()
             print("Response latency: " + str(int(round(latency * 1000))))
             print(data)
-            # wait for response
 
         else:
             print('Client is offline')
@@ -287,9 +286,9 @@ class Server:
             # retrieve the client info
             client_info: ClientInfo = self.client_infos[address]
             # send ping to sending_socket
-            client_info.get_socket().send('discover'.encode())
+            client_info.get_sending_socket().send('discover'.encode())
             # wait for response
-            response = client_info.get_socket().recv(1024).decode().split()
+            response = client_info.get_sending_socket().recv(1024).decode().split()
             for file in response:
                 print(file)
         else:
@@ -317,17 +316,17 @@ class ClientInfo():
         self.listening_thread = listening_thread
         self.files = files
 
-    def get_socket(self) -> socket.socket:
+    def get_sending_socket(self) -> socket.socket:
         return self.sending_sock
     
     def get_identifying_sock(self) -> socket.socket:
         return self.identifying_sock
     
-    def get_files(self) -> list[str]:
-        return self.files
-    
     def get_upload_addr(self) -> str:
         return self.upload_address
+    
+    def get_files(self) -> list[str]:
+        return self.files
 
 def main():
     server = Server()

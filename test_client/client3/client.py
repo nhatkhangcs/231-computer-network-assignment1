@@ -9,14 +9,14 @@ import sys
 import time
 
 class Client():
-    def __init__(self, host='192.168.1.8', port=50004) -> None:
+    def __init__(self, host='192.168.1.14', port=50004) -> None:
         # the socket to listen to server messages
         self.server_listen_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # the socket to send messages to the server
         self.server_send_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # The upload address (listen forever for upload requests)
         self.upload_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.upload_sock.bind(('192.168.1.8', 0))
+        self.upload_sock.bind(('192.168.1.14', 0))
         self.upload_sock.listen(15)
 
         # server info
