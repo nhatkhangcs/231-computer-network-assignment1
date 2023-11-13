@@ -122,6 +122,9 @@ class Server:
                 self.remove_client(client_address)
 
     def remove_client(self, client_address: str):
+        self.client_infos[client_address].get_sending_sock().send('close'.encode())
+        self.client_infos[client_address].get_identifying_sock().close()
+        self.client_infos[client_address].get_sending_sock().close()
         self.client_infos.pop(client_address)
 
     def respond_update(self, client_address: str, file_names: list[str]):
@@ -323,7 +326,7 @@ class ClientInfo():
         self.listening_thread = listening_thread
         self.files = files
 
-    def get_sending_socket(self) -> socket.socket:
+    def get_sending_sock(self) -> socket.socket:
         return self.sending_sock
     
     def get_identifying_sock(self) -> socket.socket:

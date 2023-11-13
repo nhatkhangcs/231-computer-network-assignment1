@@ -312,8 +312,12 @@ class Client():
             @ Output: None
         """
         self.server_send_sock.settimeout(5)
-        # try:
         self.server_send_sock.send('close'.encode())
+        response = recv_timeout(self.server_send_sock, 1024, 5)
+        if response == None:
+            print('Server is offline!')
+        else:
+            print('Server response: ' + response.decode())
         self.close_sockets()
     
     def close_sockets(self):
