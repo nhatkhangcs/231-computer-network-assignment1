@@ -5,6 +5,7 @@ import re
 from tqdm import tqdm
 from config import args
 import sys
+import select
 
 class Client():
     def __init__(self, server_host='localhost', server_port=50004) -> None:
@@ -325,6 +326,17 @@ class File():
         self.file_name = file_name
         self.full_size = full_size_bytes
         self.current_size = current_size_bytes
+
+def recv_timeout(socket: socket.socket, recv_size_byte, timeout=2):
+    socket.setblocking(False)
+    ready = select.select([socket], [], [], timeout)
+    if ready[0]:
+        data = socket.recv(recv_size_byte)
+        socket.setblocking(True)
+        return data
+    else:
+        socket.setblocking(True)
+        return None
 
 def main():
     client = Client()

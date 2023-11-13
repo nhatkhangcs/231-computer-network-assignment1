@@ -3,6 +3,7 @@ import threading
 import time
 from config import args
 import re
+import select
 
 class Server:     
     def __init__(self, host='localhost', port=50004) -> None:
@@ -333,6 +334,17 @@ class ClientInfo():
     
     def get_files(self) -> list[str]:
         return self.files
+    
+def recv_timeout(socket: socket.socket, recv_size_byte, timeout=2):
+    socket.setblocking(False)
+    ready = select.select([socket], [], [], timeout)
+    if ready[0]:
+        data = socket.recv(recv_size_byte)
+        socket.setblocking(True)
+        return data
+    else:
+        socket.setblocking(True)
+        return None
 
 def main():
     server = Server()
