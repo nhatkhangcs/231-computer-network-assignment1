@@ -317,7 +317,7 @@ class Client():
         self.server_send_sock.send('close'.encode())
         response = recv_timeout(self.server_send_sock, 1024, 10)
         if response == '' or response == None:
-            print('Server is offline!')
+            print('Server is offline at shutdown!')
         elif response == 'done':
             print('Server response: ' + response)
         self.close_sockets()
