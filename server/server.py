@@ -122,7 +122,7 @@ class Server:
                 self.remove_client(client_address)
 
     def remove_client(self, client_address: str):
-        self.client_infos[client_address].get_sending_sock().send('close'.encode())
+        self.client_infos[client_address].get_sending_sock().send('done'.encode())
         self.client_infos[client_address].get_identifying_sock().close()
         self.client_infos[client_address].get_sending_sock().close()
         self.client_infos.pop(client_address)
@@ -190,7 +190,7 @@ class Server:
         
         self.sock.close()
         for address in self.client_infos.keys():
-            self.client_infos[address].get_sending_socket().close()
+            self.client_infos[address].get_sending_sock().close()
             self.client_infos[address].get_identifying_sock().close()
 
     def cmd_forever(self):
@@ -266,7 +266,7 @@ class Server:
             # retrieve the client info
             client_info: ClientInfo = self.client_infos[address]
             # send ping to sending_socket
-            client_info.get_sending_socket().send('ping'.encode())
+            client_info.get_sending_sock().send('ping'.encode())
             Time1 = time.time()
             data = ""
             while not data:
@@ -277,7 +277,7 @@ class Server:
                     self.client_infos.pop(address)
                     return
 
-                data = client_info.get_sending_socket().recv(1024).decode()
+                data = client_info.get_sending_sock().recv(1024).decode()
             print("Response latency: " + str(int(round(latency * 1000))))
             print(data)
 
@@ -296,9 +296,9 @@ class Server:
             # retrieve the client info
             client_info: ClientInfo = self.client_infos[address]
             # send ping to sending_socket
-            client_info.get_sending_socket().send('discover'.encode())
+            client_info.get_sending_sock().send('discover'.encode())
             # wait for response
-            response = client_info.get_sending_socket().recv(1024).decode().split()
+            response = client_info.get_sending_sock().recv(1024).decode().split()
             for file in response:
                 print(file)
         else:
