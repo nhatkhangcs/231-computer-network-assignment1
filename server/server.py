@@ -104,7 +104,10 @@ class Server:
         """
 
         while True:
-            data = client_socket.recv(1024).decode()
+            try:
+                data = client_socket.recv(1024).decode()
+            except Exception as e:
+                break
             if data == '':
                 continue
             data = data.split(' ')
@@ -122,7 +125,7 @@ class Server:
                 self.remove_client(client_address)
 
     def remove_client(self, client_address: str):
-        self.client_infos[client_address].get_sending_sock().send('done'.encode())
+        self.client_infos[client_address].get_identifying_sock().send('done'.encode())
         self.client_infos[client_address].get_identifying_sock().close()
         self.client_infos[client_address].get_sending_sock().close()
         self.client_infos.pop(client_address)

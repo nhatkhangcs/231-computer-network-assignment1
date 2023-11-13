@@ -78,8 +78,10 @@ class Client():
             @ Output: Responds all the incoming messages
         """
         while True:
-            data = self.server_listen_sock.recv(1024).decode()
-
+            try: 
+                data = self.server_listen_sock.recv(1024).decode()
+            except Exception as e:
+                break
             # print('Received:', data)
             if data == '':
                 continue
