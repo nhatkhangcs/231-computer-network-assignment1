@@ -248,10 +248,14 @@ class Client():
             return
         
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(10)
         try: 
             sock.connect((upload_address[0], int(upload_address[1])))
         except ConnectionRefusedError as e:
             print('Failed to connect to peer ' + upload_address[0] + ' ' + upload_address[1] + ' to download file ' + file_name + ', (peer is offline)')
+            return
+        except socket.timeout as t:
+            print('Failed to connect to peer ' + upload_address[0] + ' ' + upload_address[1] + ' to download file ' + file_name + ', (connection timeout)')
             return
         
         sock.send(file_name.encode())
@@ -264,7 +268,7 @@ class Client():
 
         received_bytes = 0
         data = b''
-        with open('repo/' + file_name, 'wb') as file:
+        with open('temp/' + file_name, 'wb') as file:
             while received_bytes < file_size:
                 data = sock.recv(65536)
                 received_bytes += len(data)
@@ -272,6 +276,9 @@ class Client():
                 file.write(data)
                 file.flush()
         
+        os.replace('temp/' + file_name, 'repo/' + file_name)
+        os.remove('temp/' + file_name)
+
         sock.close()
         # need to make sure that server get updated client repo
         dir_list = os.listdir("repo")
@@ -315,6 +322,12 @@ class Client():
         self.server_listen_sock.close()
         self.server_send_sock.close()
         self.upload_sock.close()
+
+class File():
+    def __init__(self, file_name, full_size_bytes, current_size_bytes) -> None:
+        self.file_name = file_name
+        self.full_size = full_size_bytes
+        self.current_size = current_size_bytes
 
 def main():
     client = Client()
