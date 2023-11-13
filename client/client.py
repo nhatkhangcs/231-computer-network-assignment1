@@ -26,7 +26,6 @@ class Client():
         self.server_listen_thread = threading.Thread(target=self.listen_server, daemon=True)
         # the thread to listen to download requests from other peers
         self.upload_thread = threading.Thread(target=self.listen_upload, daemon=True)
-        # the thread to send messages to the server
 
         self.setup()
 
@@ -89,8 +88,6 @@ class Client():
                 self.respond_discover()
             else:
                 raise RuntimeError('[Error] WTF was that command: ' + data)
-            
-            # self.server_listen_sock.send(send_data.encode())
 
     def listen_upload(self):
         """
@@ -171,8 +168,6 @@ class Client():
             elif command == 'fetch':
                 self.fetch(arguments)
 
-                
-
     def publish(self, arguments):
         """
             @ Description: This function execute the 'publish' command
@@ -192,10 +187,12 @@ class Client():
                 f1.write(f.read())
 
         self.server_send_sock.send(('publish ' + repo_file_name).encode())
+
         data = ''
         while not data:
             data = self.server_send_sock.recv(1024).decode()
         print('Server response: ' + data + '\n')
+
 
     def fetch(self, filenames: list[str]):
         """
@@ -291,7 +288,7 @@ class Client():
             @ Return: The reponse with string datatype
             @ Output: None
         """
-        # TODO: respond to server <ping> message here
+
         self.server_listen_sock.sendall('I\'m online'.encode())
 
     def respond_discover(self) -> str:

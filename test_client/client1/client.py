@@ -1,32 +1,31 @@
 import socket
 import threading
 import os
-from config import args
-from typing import List
 import re
 from tqdm import tqdm
+from config import args
 import sys
 
 class Client():
-    def __init__(self, host='192.168.1.8', port=50004) -> None:
+    def __init__(self, server_host='localhost', server_port=50004) -> None:
         # the socket to listen to server messages
         self.server_listen_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # the socket to send messages to the server
         self.server_send_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server_send_sock.settimeout(10)
         # The upload address (listen forever for upload requests)
         self.upload_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.upload_sock.bind(('192.168.1.8', 0))
-        self.upload_sock.listen(15)
+        self.upload_sock.bind(('localhost', 0))
+        self.upload_sock.listen(args.MAX_PARALLEL_DOWNLOADS)
 
         # server info
-        self.host = host
-        self.port = port
+        self.server_host = server_host
+        self.server_port = server_port
 
         # the thread to listen to server messages
         self.server_listen_thread = threading.Thread(target=self.listen_server, daemon=True)
         # the thread to listen to download requests from other peers
         self.upload_thread = threading.Thread(target=self.listen_upload, daemon=True)
-        # the thread to send messages to the server
 
         self.setup()
 
@@ -51,11 +50,11 @@ class Client():
                 2) Transfer the information about the connection the server (both the first connect address and the upload address)
         """
         # first connect to server
-        self.server_send_sock.connect((self.host, self.port))
-        self.server_send_sock.send('NONE'.encode())
+        self.server_send_sock.connect((self.server_host, self.server_port))
+        self.server_send_sock.send('first'.encode())
 
         # second connect to server
-        self.server_listen_sock.connect((self.host, self.port))
+        self.server_listen_sock.connect((self.server_host, self.server_port))
 
         # tell the server which original connection this connection belongs to
         # tell the server the downloading address that other clients can reach out to
@@ -79,17 +78,16 @@ class Client():
         """
         while True:
             data = self.server_listen_sock.recv(1024).decode()
+
             # print('Received:', data)
             if data == '':
                 continue
             elif data == 'ping':
-                send_data = self.respond_ping()
+                self.respond_ping()
             elif data == 'discover':
-                send_data = self.respond_discover()
+                self.respond_discover()
             else:
                 raise RuntimeError('[Error] WTF was that command: ' + data)
-            
-            # self.server_listen_sock.send(send_data.encode())
 
     def listen_upload(self):
         """
@@ -98,20 +96,18 @@ class Client():
             @ Return: None
             @ Output: Create many threads to handle the upload parallelly
             @ Additional notes: the request message comes in the form:
-                <file name 1> <file name 2> ... <file name n>
-                seperated by a space
+                <file name>
         """
-        # TODO: forever listen for incoming upload requests, there can be multiple upload requests from a client as the same time
+        # TODO: forever listen for incoming upload requests
         while True:
-            download_socket, download_address = self.upload_sock.accept()
-            # <file name 1> <file name 2> ... <file name n>
+            download_socket, _ = self.upload_sock.accept()
             request_file = ''
             while not request_file:
                 request_file = download_socket.recv(1024).decode()
-            thread = threading.Thread(target=self.upload, args=(request_file, download_address[0], download_address[1], download_socket), daemon=True)
+            thread = threading.Thread(target=self.upload, args=(request_file, download_socket), daemon=True)
             thread.start()
         
-    def upload(self, file_name: str, download_IP: str, download_port: int, download_socket: socket.socket):
+    def upload(self, file_name: str, download_socket: socket.socket):
         """
             @ Description: This function upload the file to other peers
             @ Input: 
@@ -123,12 +119,12 @@ class Client():
         file_size = os.path.getsize('repo/' + file_name)
         download_socket.send(str(file_size).encode())
         data = ''
-        while not data:
+
+        while data != 'ready':
             data = download_socket.recv(1024).decode()
         with open('repo/' + file_name,'rb') as file:
             data = file.read()
             download_socket.sendall(data)
-
 
     def cmd_forever(self):
         """
@@ -139,11 +135,11 @@ class Client():
         """
         while True:
             input_str = input('>> ')
-            pattern = r'^\s*\b(?:publish|fetch)\b'
+            pattern = r'^\s*\b(?:publish|fetch|close)\b'
             matched = re.search(pattern, input_str)
 
             if not matched:
-                print('Invalid command (please use <publish> or <fetch>)!')
+                print('Invalid command (please use <publish> or <fetch> or <close>)!')
                 continue
 
             # remove spaces at the beginning or end
@@ -151,7 +147,11 @@ class Client():
             # remove redundant spaces
             input_str = re.sub(r'\s\s+', ' ', input_str)
 
+
             splited_command = input_str.split()
+            if splited_command[0] == 'close':
+                self.close()
+                break
             if len(splited_command) <= 1:
                 print('Please enter the arguments for the command!')
                 continue
@@ -168,8 +168,6 @@ class Client():
             elif command == 'fetch':
                 self.fetch(arguments)
 
-                
-
     def publish(self, arguments):
         """
             @ Description: This function execute the 'publish' command
@@ -177,24 +175,26 @@ class Client():
             @ Return: None
             @ Output: Execute the 'publish' command and receive respond from the server
         """
-        # TODO: below are just mock codes for it to work, please modify them
-        # self.server_send_sock.send('publish'.encode())
-        # response = self.server_send_sock.recv(1024).decode()
-        # print(response)
-
         # send file from client/local to client/repo
         local_file_name = arguments[0]
         repo_file_name = arguments[1]
+        if local_file_name not in os.listdir("local"):
+            print('File ' + local_file_name + ' does not exist in your local folder!')
+            return
+
         with open("local/" + local_file_name, "rb") as f:
             with open("repo/" + local_file_name, "wb") as f1:
                 f1.write(f.read())
+
         self.server_send_sock.send(('publish ' + repo_file_name).encode())
+
         data = ''
         while not data:
             data = self.server_send_sock.recv(1024).decode()
-        print('Server response: ' + data)
+        print('Server response: ' + data + '\n')
 
-    def fetch(self, filenames):
+
+    def fetch(self, filenames: list[str]):
         """
             @ Description: This function execute the 'fetch' command (multithreaded)
             @ Input: arguments - the list of file names to download, comes in the form
@@ -229,17 +229,9 @@ class Client():
             thread.join()
 
         sys.stdout.flush()
-        # p2p_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # p2p_sock.bind(('localhost', 0))
-        # p2p_thread = threading.Thread(target=self.download, args=(filename, response[0], response[1]))
-        # # connect to peer
-        # p2p_sock.connect((response[0], int(response[1])))
+        print('\n\n')
 
-        # # send file name to peer
-        # p2p_sock.send(filename.encode())
-        # print(response)
-
-    def download(self, file_name: str, upload_address: str, position):
+    def download(self, file_name: str, upload_address: str, position=0):
         """
             @ Description: This function download the file from other peers
             @ Input: 
@@ -282,8 +274,6 @@ class Client():
         dir_list = os.listdir("repo")
         self.server_send_sock.send(('update ' + ' '.join(dir_list)).encode())
 
-
-
     def respond_ping(self) -> str:
         """
             @ Description: This function responds to the 'ping' message from server
@@ -291,7 +281,7 @@ class Client():
             @ Return: The reponse with string datatype
             @ Output: None
         """
-        # TODO: respond to server <ping> message here
+
         self.server_listen_sock.sendall('I\'m online'.encode())
 
     def respond_discover(self) -> str:
@@ -301,7 +291,7 @@ class Client():
             @ Return: The reponse with string datatype
             @ Output: None
         """
-        # TODO: respond to server <discover> message here
+
         # retrieve all files in client/repo
         dir_list = os.listdir("repo")
         self.server_listen_sock.sendall(' '.join(dir_list).encode())
@@ -313,29 +303,32 @@ class Client():
             @ Return: None
             @ Output: None
         """
+        self.server_send_sock.settimeout(5)
+        # try:
         self.server_send_sock.send('close'.encode())
-        data = ''
-        while not data:
-            data = self.server_send_sock.recv(1024).decode()
+        self.close_sockets()
+    
+    def close_sockets(self):
         self.server_listen_sock.close()
         self.server_send_sock.close()
         self.upload_sock.close()
-
-class File():
-    def __init__(self, file_name, size_in_bytes, owner_address) -> None:
-        self.file_name = file_name
-        self.size_in_bytes = size_in_bytes
-        self.owner_address = owner_address
 
 def main():
     client = Client()
     try:
         client.start()
+    except KeyboardInterrupt as k:
+        print('Program interrupted!')
+        client.close()
+    except BrokenPipeError as b:
+        print('Server disconnected!')
+        client.close_sockets()
+    except socket.timeout as t:
+        print("Connection timeout")
+        client.close_sockets()
     except Exception as e:
         client.close()
         print(f'[Exception] Caught exception in the process: {e}')
-    except KeyboardInterrupt as k:
-        client.close()
-
+    
 if __name__ == '__main__':
     main()
