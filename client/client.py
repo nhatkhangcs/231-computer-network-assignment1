@@ -313,11 +313,11 @@ class Client():
         """
         self.server_send_sock.settimeout(5)
         self.server_send_sock.send('close'.encode())
-        response = recv_timeout(self.server_send_sock, 1024, 5)
-        if response == None:
+        response = recv_timeout(self.server_send_sock, 1024, 10)
+        if response == '' or response == None:
             print('Server is offline!')
-        else:
-            print('Server response: ' + response.decode())
+        elif response == 'done':
+            print('Server response: ' + response)
         self.close_sockets()
     
     def close_sockets(self):
@@ -335,7 +335,7 @@ def recv_timeout(socket: socket.socket, recv_size_byte, timeout=2):
     socket.setblocking(False)
     ready = select.select([socket], [], [], timeout)
     if ready[0]:
-        data = socket.recv(recv_size_byte)
+        data = socket.recv(recv_size_byte).decode()
         socket.setblocking(True)
         return data
     else:
