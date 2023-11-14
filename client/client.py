@@ -112,13 +112,16 @@ class Client():
         # TODO: forever listen for incoming upload requests
         while True:
             download_socket, _ = self.upload_sock.accept()
-            request_file = ''
-            while not request_file:
-                request_file = download_socket.recv(1024).decode()
-            thread = threading.Thread(target=self.upload, args=(request_file, download_socket), daemon=True)
+            request_file_and_offset = ''
+            while not request_file_and_offset:
+                request_file_and_offset = download_socket.recv(1024).decode()
+            request_file_and_offset = request_file_and_offset.split()
+            request_file = request_file_and_offset[0]
+            request_offset = int(request_file_and_offset[1])
+            thread = threading.Thread(target=self.upload, args=(request_file, request_offset, download_socket), daemon=True)
             thread.start()
         
-    def upload(self, file_name: str, download_socket: socket.socket):
+    def upload(self, file_name: str, byte_offset: int, download_socket: socket.socket):
         """
             @ Description: This function upload the file to other peers
             @ Input: 
@@ -134,6 +137,7 @@ class Client():
         while data != 'ready':
             data = download_socket.recv(1024).decode()
         with open('repo/' + file_name,'rb') as file:
+            file.seek(byte_offset)
             data = file.read()
             download_socket.sendall(data)
 
