@@ -265,10 +265,13 @@ class Client():
                 addresses = [addresses[n:n + 2] for n in range(0, len(addresses), 2)]
                 file_to_addrs[filename] = addresses
 
-        if len(file_to_addrs.keys()) == 1:
-            filename = file_to_addrs.keys()[0]
+        if len(file_to_addrs.keys()) == 0:
+            print('No available peers for the files!')
+            return
+        elif len(file_to_addrs.keys()) == 1:
+            filename = list(file_to_addrs.keys())[0]
             addrs = file_to_addrs[filename]
-            self.download(filename, addrs, 0)
+            self.handle_download(filename, addrs, 0)
             return
         
         for i, (filename, addrs) in enumerate(file_to_addrs.items()):
@@ -278,7 +281,7 @@ class Client():
         
         download_threads = []
         for i, (filename, addrs) in enumerate(file_to_addrs.items()):
-            download_threads.append(threading.Thread(target=self.download, args=[filename, addrs, i], daemon=True))
+            download_threads.append(threading.Thread(target=self.handle_download, args=[filename, addrs, i], daemon=True))
             download_threads[i].start()
             
         
