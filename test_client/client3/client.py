@@ -265,7 +265,10 @@ class Client():
                 addresses = [addresses[n:n + 2] for n in range(0, len(addresses), 2)]
                 file_to_addrs[filename] = addresses
 
-        if len(file_to_addrs.keys()) == 1:
+        if len(file_to_addrs.keys()) == 0:
+            print('No available peers for the files!')
+            return
+        elif len(file_to_addrs.keys()) == 1:
             filename = list(file_to_addrs.keys())[0]
             addrs = file_to_addrs[filename]
             self.handle_download(filename, addrs, 0)
