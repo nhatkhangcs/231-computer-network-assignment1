@@ -32,6 +32,14 @@ class Client():
         # list of unfinished downloads
         self.unfinished_downloads: Dict[str, File] = {}
 
+        # create missing folders
+        if not os.path.exists('local'):
+            os.makedirs('local')
+        if not os.path.exists('repo'):
+            os.makedirs('repo')
+        if not os.path.exists('temp'):
+            os.makedirs('temp')
+
         # remove all temp files
         for file in os.listdir('temp'):
             os.remove('temp/' + file)
