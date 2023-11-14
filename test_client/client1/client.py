@@ -231,6 +231,8 @@ class Client():
                 with  <upload peer i IP> <upload peer i port> correspond to the file i
         """
         filenames = [filename for filename in filenames if filename not in os.listdir("repo")]
+        if len(filenames) == 0:
+            return
         fetch_cmd = 'fetch ' + ' '.join(filenames)
         self.server_send_sock.send(fetch_cmd.encode())
         data = ''
@@ -241,7 +243,7 @@ class Client():
         addresses = [addresses[n:n + 2] for n in range(0, len(addresses), 2)]
 
         if len(addresses) == 1:
-            self.download(filenames[0], addresses[0])
+            self.download(filenames[0], addresses[0], 0)
             return
         
         download_threads = []
@@ -298,8 +300,7 @@ class Client():
             return
         
         progess_bar = tqdm(total=file_size, desc=file_name, leave=False, unit_scale=True, unit='B', position=position, file=sys.stdout, colour='green')
-        if not full_download:
-            progess_bar.update(self.unfinished_downloads[file_name].current_size)
+
 
         if full_download:
             received_bytes = 0
@@ -309,6 +310,7 @@ class Client():
 
         with open('temp/' + file_name, 'wb') as file:
             if not full_download:
+                progess_bar.update(self.unfinished_downloads[file_name].current_size)
                 file.seek(self.unfinished_downloads[file_name].current_size)
             while received_bytes < file_size:
                 data = recv_timeout(sock, 65536, 60)
