@@ -263,17 +263,33 @@ class Client():
             return
         
         full_download = (self.unfinished_downloads.get(file_name) == None)
-        
-        sock.send(file_name.encode())
-        data = ''
-        while not data:
-            data = sock.recv(2048).decode()
-        file_size = int(data)
-        sock.send('ready'.encode())
-        progess_bar = tqdm(total=file_size, desc=file_name, leave=False, unit_scale=True, unit='B', position=position, file=sys.stdout, colour='green')
 
-        received_bytes = 0
+        if full_download:
+            sock.send((file_name + ' ' + str(0)).encode())
+        else:
+            sock.send((file_name + ' ' + str(self.unfinished_downloads[file_name].current_size)).encode())
+        data = recv_timeout(sock, 1024, 20)
+        if data == '' or data == None:
+            print('Couldn\'t receive the file size of file ' + file_name + ' from peer ' + upload_address[0] + ' ' + upload_address[1] + ', aborting...')
+            return
+        file_size = int(data)
+
+        try:
+            sock.send('ready'.encode())
+        except Exception as e:
+            print('Failed to send \'ready\' message to peer ' + upload_address[0] + ' ' + upload_address[1] + ' to download file ' + file_name + ', (connection timeout)')
+            return
+        
+        progess_bar = tqdm(total=file_size, desc=file_name, leave=False, unit_scale=True, unit='B', position=position, file=sys.stdout, colour='green')
+        if not full_download:
+            progess_bar.update(self.unfinished_downloads[file_name].current_size)
+
+        if full_download:
+            received_bytes = 0
+        else:
+            received_bytes = self.unfinished_downloads[file_name].current_size
         data = b''
+
         with open('temp/' + file_name, 'wb') as file:
             while received_bytes < file_size:
                 data = recv_timeout(sock, 65536, 60)
