@@ -7,7 +7,7 @@ import select
 from typing import Dict
 
 class Server:     
-    def __init__(self, host='192.168.43.250', port=50004) -> None:
+    def __init__(self, host='localhost', port=50004) -> None:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.bind((host, port))
         self.sock.listen(args.MAX_CLIENTS)
@@ -135,7 +135,7 @@ class Server:
         if client_address in self.client_infos.keys():
             self.client_infos[client_address].files = file_names
 
-    def respond_fetch(self, client_address: str, file_name: str):
+    def respond_fetch(self, client_address: str, file_names: str):
         """
             @ Description: This function returns the list of peers' address that the client can connect to download 
             @ Input: None
@@ -145,8 +145,8 @@ class Server:
                 in <upload peer i IP> and <upload peer i port>
             @ Output: None
         """
-
-        
+        file_name = file_names[0]
+    
         avail_list = []
         for addr in self.client_infos.keys():
             if file_name in self.client_infos[addr].get_files() and addr != client_address:
@@ -158,7 +158,7 @@ class Server:
                 return_addressess += self.client_infos[addr].get_upload_addr()[0] + ' ' + str(self.client_infos[addr].get_upload_addr()[1]) + ' '
         else:
             return_addressess += 'null null '
-            
+
         return return_addressess.strip()
 
         # if total_client_list:
