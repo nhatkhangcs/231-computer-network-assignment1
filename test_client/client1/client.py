@@ -5,6 +5,8 @@ import re
 from tqdm import tqdm
 from config import args
 import sys
+import select
+from typing import List, Dict
 
 class Client():
     def __init__(self, server_host='localhost', server_port=50004) -> None:
@@ -26,6 +28,13 @@ class Client():
         self.server_listen_thread = threading.Thread(target=self.listen_server, daemon=True)
         # the thread to listen to download requests from other peers
         self.upload_thread = threading.Thread(target=self.listen_upload, daemon=True)
+
+        # list of unfinished downloads
+        self.unfinished_downloads: Dict[str, File] = {}
+
+        # remove all temp files
+        for file in os.listdir('temp'):
+            os.remove('temp/' + file)
 
         self.setup()
 
@@ -77,8 +86,10 @@ class Client():
             @ Output: Responds all the incoming messages
         """
         while True:
-            data = self.server_listen_sock.recv(1024).decode()
-
+            try: 
+                data = self.server_listen_sock.recv(1024).decode()
+            except Exception as e:
+                break
             # print('Received:', data)
             if data == '':
                 continue
@@ -101,13 +112,16 @@ class Client():
         # TODO: forever listen for incoming upload requests
         while True:
             download_socket, _ = self.upload_sock.accept()
-            request_file = ''
-            while not request_file:
-                request_file = download_socket.recv(1024).decode()
-            thread = threading.Thread(target=self.upload, args=(request_file, download_socket), daemon=True)
+            request_file_and_offset = ''
+            while not request_file_and_offset:
+                request_file_and_offset = download_socket.recv(1024).decode()
+            request_file_and_offset = request_file_and_offset.split()
+            request_file = request_file_and_offset[0]
+            request_offset = int(request_file_and_offset[1])
+            thread = threading.Thread(target=self.upload, args=(request_file, request_offset, download_socket), daemon=True)
             thread.start()
         
-    def upload(self, file_name: str, download_socket: socket.socket):
+    def upload(self, file_name: str, byte_offset: int, download_socket: socket.socket):
         """
             @ Description: This function upload the file to other peers
             @ Input: 
@@ -123,6 +137,7 @@ class Client():
         while data != 'ready':
             data = download_socket.recv(1024).decode()
         with open('repo/' + file_name,'rb') as file:
+            file.seek(byte_offset)
             data = file.read()
             download_socket.sendall(data)
 
@@ -207,6 +222,7 @@ class Client():
                 <upload peer 1 IP> <upload peer 1 port> <upload peer 2 IP> <upload peer 2 port> ...
                 with  <upload peer i IP> <upload peer i port> correspond to the file i
         """
+        filenames = [filename for filename in filenames if filename not in os.listdir("repo")]
         fetch_cmd = 'fetch ' + ' '.join(filenames)
         self.server_send_sock.send(fetch_cmd.encode())
         data = ''
@@ -245,31 +261,67 @@ class Client():
             return
         
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(10)
         try: 
             sock.connect((upload_address[0], int(upload_address[1])))
         except ConnectionRefusedError as e:
             print('Failed to connect to peer ' + upload_address[0] + ' ' + upload_address[1] + ' to download file ' + file_name + ', (peer is offline)')
             return
+        except socket.timeout as t:
+            print('Failed to connect to peer ' + upload_address[0] + ' ' + upload_address[1] + ' to download file ' + file_name + ', (connection timeout)')
+            return
         
-        sock.send(file_name.encode())
-        data = ''
-        while not data:
-            data = sock.recv(2048).decode()
-        file_size = int(data)
-        sock.send('ready'.encode())
-        progess_bar = tqdm(total=file_size, desc=file_name, leave=False, unit_scale=True, unit='B', position=position, file=sys.stdout, colour='green')
+        full_download = (self.unfinished_downloads.get(file_name) == None)
 
-        received_bytes = 0
+        if full_download:
+            sock.send((file_name + ' ' + str(0)).encode())
+        else:
+            sock.send((file_name + ' ' + str(self.unfinished_downloads[file_name].current_size)).encode())
+        data = recv_timeout(sock, 1024, 20)
+        if data == '' or data == None:
+            print('Couldn\'t receive the file size of file ' + file_name + ' from peer ' + upload_address[0] + ' ' + upload_address[1] + ', aborting...')
+            return
+        file_size = int(data)
+
+        try:
+            sock.send('ready'.encode())
+        except Exception as e:
+            print('Failed to send \'ready\' message to peer ' + upload_address[0] + ' ' + upload_address[1] + ' to download file ' + file_name + ', (connection timeout)')
+            return
+        
+        progess_bar = tqdm(total=file_size, desc=file_name, leave=False, unit_scale=True, unit='B', position=position, file=sys.stdout, colour='green')
+        if not full_download:
+            progess_bar.update(self.unfinished_downloads[file_name].current_size)
+
+        if full_download:
+            received_bytes = 0
+        else:
+            received_bytes = self.unfinished_downloads[file_name].current_size
         data = b''
-        with open('repo/' + file_name, 'wb') as file:
+
+        with open('temp/' + file_name, 'wb') as file:
             while received_bytes < file_size:
-                data = sock.recv(65536)
+                data = recv_timeout(sock, 65536, 60)
+                if data == None or data == '':
+                    print('Connection to peer ' + upload_address[0] + ' ' + upload_address[1] + ' is lost while downloading!')
+                    if full_download:
+                        self.unfinished_downloads[file_name] = File(file_name, file_size, received_bytes)
+                    else:
+                        self.unfinished_downloads[file_name].current_size = received_bytes
+                    return
                 received_bytes += len(data)
                 progess_bar.update(len(data))
                 file.write(data)
                 file.flush()
         
+        os.replace('temp/' + file_name, 'repo/' + file_name)
+        os.remove('temp/' + file_name)
+
         sock.close()
+
+        if not full_download:
+            self.unfinished_downloads.pop(file_name)
+
         # need to make sure that server get updated client repo
         dir_list = os.listdir("repo")
         self.server_send_sock.send(('update ' + ' '.join(dir_list)).encode())
@@ -304,14 +356,35 @@ class Client():
             @ Output: None
         """
         self.server_send_sock.settimeout(5)
-        # try:
         self.server_send_sock.send('close'.encode())
+        response = recv_timeout(self.server_send_sock, 1024, 10)
+        if response == '' or response == None:
+            print('Server is offline at shutdown!')
+        elif response == 'done':
+            print('Server response: ' + response)
         self.close_sockets()
     
     def close_sockets(self):
         self.server_listen_sock.close()
         self.server_send_sock.close()
         self.upload_sock.close()
+
+class File():
+    def __init__(self, file_name, full_size_bytes, current_size_bytes) -> None:
+        self.file_name = file_name
+        self.full_size = full_size_bytes
+        self.current_size = current_size_bytes
+
+def recv_timeout(socket: socket.socket, recv_size_byte, timeout=2):
+    socket.setblocking(False)
+    ready = select.select([socket], [], [], timeout)
+    if ready[0]:
+        data = socket.recv(recv_size_byte).decode()
+        socket.setblocking(True)
+        return data
+    else:
+        socket.setblocking(True)
+        return None
 
 def main():
     client = Client()
