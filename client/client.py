@@ -6,6 +6,7 @@ from tqdm import tqdm
 from config import args
 import sys
 import select
+from typing import List, Dict
 
 class Client():
     def __init__(self, server_host='localhost', server_port=50004) -> None:
@@ -27,6 +28,9 @@ class Client():
         self.server_listen_thread = threading.Thread(target=self.listen_server, daemon=True)
         # the thread to listen to download requests from other peers
         self.upload_thread = threading.Thread(target=self.listen_upload, daemon=True)
+
+        # list of unfinished downloads
+        self.unfinished_downloads: Dict[str, File] = {}
 
         self.setup()
 
@@ -258,6 +262,8 @@ class Client():
             print('Failed to connect to peer ' + upload_address[0] + ' ' + upload_address[1] + ' to download file ' + file_name + ', (connection timeout)')
             return
         
+        full_download = (self.unfinished_downloads.get(file_name) == None)
+        
         sock.send(file_name.encode())
         data = ''
         while not data:
@@ -270,7 +276,14 @@ class Client():
         data = b''
         with open('temp/' + file_name, 'wb') as file:
             while received_bytes < file_size:
-                data = sock.recv(65536)
+                data = recv_timeout(sock, 65536, 60)
+                if data == None or data == '':
+                    print('Connection to peer ' + upload_address[0] + ' ' + upload_address[1] + ' is lost while downloading!')
+                    if full_download:
+                        self.unfinished_downloads[file_name] = File(file_name, file_size, received_bytes)
+                    else:
+                        self.unfinished_downloads[file_name].current_size = received_bytes
+                    return
                 received_bytes += len(data)
                 progess_bar.update(len(data))
                 file.write(data)
@@ -280,6 +293,10 @@ class Client():
         os.remove('temp/' + file_name)
 
         sock.close()
+
+        if not full_download:
+            self.unfinished_downloads.pop(file_name)
+
         # need to make sure that server get updated client repo
         dir_list = os.listdir("repo")
         self.server_send_sock.send(('update ' + ' '.join(dir_list)).encode())
