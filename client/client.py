@@ -271,6 +271,11 @@ class Client():
             self.download(filename, addrs, 0)
             return
         
+        for i, (filename, addrs) in enumerate(file_to_addrs.items()):
+            print('Available peers for file ' + filename + ':')
+            for addr in addrs:
+                print('\t' + addr[0] + ' ' + addr[1])
+        
         download_threads = []
         for i, (filename, addrs) in enumerate(file_to_addrs.items()):
             download_threads.append(threading.Thread(target=self.download, args=[filename, addrs, i], daemon=True))
@@ -283,7 +288,26 @@ class Client():
         sys.stdout.flush()
         print('\n\n')
 
-    def download(self, file_name: str, upload_addresses: str, position=0):
+    def handle_download(self, filename: str, upload_addresses: List[str], position: int):
+        """
+            @ Description: This function handle the download of a single file
+            @ Input: 
+                1) filename - the name of the file to download
+                2) upload_addresses - the list of addresses of the peers to download from
+                3) position - the position of the progress bar
+            @ Return: None
+            @ Output: Download the file sucessfully
+        """
+        for upload_address in upload_addresses:
+            download_success = self.download(filename, upload_address, position)
+            if download_success:
+                break
+
+        if not download_success:
+            print('Failed to download file ' + filename + ' from all available peers!')
+            return
+
+    def download(self, file_name: str, upload_address: str, position=0) -> bool:
         """
             @ Description: This function download the file from other peers
             @ Input: 
@@ -293,8 +317,7 @@ class Client():
             @ Output: Download the file sucessfully
         """
         if upload_address[0] == 'null' and upload_address[1] == 'null':
-            print('Found no peer to download file ' + file_name)
-            return
+            return False
         
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(10)
@@ -302,10 +325,10 @@ class Client():
             sock.connect((upload_address[0], int(upload_address[1])))
         except ConnectionRefusedError as e:
             print('Failed to connect to peer ' + upload_address[0] + ' ' + upload_address[1] + ' to download file ' + file_name + ', (peer is offline)')
-            return
+            return False
         except socket.timeout as t:
             print('Failed to connect to peer ' + upload_address[0] + ' ' + upload_address[1] + ' to download file ' + file_name + ', (connection timeout)')
-            return
+            return False
         
         full_download = (self.unfinished_downloads.get(file_name) == None)
 
@@ -316,16 +339,17 @@ class Client():
         data = recv_timeout(sock, 1024, 20).decode()
         if data == '' or data == None:
             print('Couldn\'t receive the file size of file ' + file_name + ' from peer ' + upload_address[0] + ' ' + upload_address[1] + ', aborting...')
-            return
+            return False
         file_size = int(data)
 
         try:
             sock.send('ready'.encode())
         except Exception as e:
             print('Failed to send \'ready\' message to peer ' + upload_address[0] + ' ' + upload_address[1] + ' to download file ' + file_name + ', (connection timeout)')
-            return
+            return False
         
-        progess_bar = tqdm(total=file_size, desc=file_name, leave=True, unit_scale=True, unit='B', position=position, file=sys.stdout, colour='green')
+        download_description = file_name + ' from ' + '(' + upload_address[0] + ', ' + upload_address[1] + ')'
+        progess_bar = tqdm(total=file_size, desc=download_description, leave=True, unit_scale=True, unit='B', position=position, file=sys.stdout, colour='green')
 
 
         if full_download:
@@ -346,7 +370,7 @@ class Client():
                         self.unfinished_downloads[file_name] = File(file_name, file_size, received_bytes)
                     else:
                         self.unfinished_downloads[file_name].current_size = received_bytes
-                    return
+                    return False
                 received_bytes += len(data)
                 progess_bar.update(len(data))
                 file.write(data)
@@ -362,6 +386,8 @@ class Client():
         # need to make sure that server get updated client repo
         dir_list = os.listdir("repo")
         self.server_send_sock.send(('update ' + ' '.join(dir_list)).encode())
+
+        return True
 
     def respond_ping(self) -> str:
         """
