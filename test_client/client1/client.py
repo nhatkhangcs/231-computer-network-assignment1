@@ -285,7 +285,7 @@ class Client():
             sock.send((file_name + ' ' + str(0)).encode())
         else:
             sock.send((file_name + ' ' + str(self.unfinished_downloads[file_name].current_size)).encode())
-        data = recv_timeout(sock, 1024, 20)
+        data = recv_timeout(sock, 1024, 20).decode()
         if data == '' or data == None:
             print('Couldn\'t receive the file size of file ' + file_name + ' from peer ' + upload_address[0] + ' ' + upload_address[1] + ', aborting...')
             return
@@ -366,7 +366,7 @@ class Client():
         """
         self.server_send_sock.settimeout(5)
         self.server_send_sock.send('close'.encode())
-        response = recv_timeout(self.server_send_sock, 1024, 10)
+        response = recv_timeout(self.server_send_sock, 1024, 10).decode()
         if response == '' or response == None:
             print('Server is offline at shutdown!')
         elif response == 'done':
@@ -384,11 +384,11 @@ class File():
         self.full_size = full_size_bytes
         self.current_size = current_size_bytes
 
-def recv_timeout(socket: socket.socket, recv_size_byte, timeout=2):
+def recv_timeout(socket: socket.socket, recv_size_byte, timeout=2) -> bytearray:
     socket.setblocking(False)
     ready = select.select([socket], [], [], timeout)
     if ready[0]:
-        data = socket.recv(recv_size_byte).decode()
+        data = socket.recv(recv_size_byte)
         socket.setblocking(True)
         return data
     else:
