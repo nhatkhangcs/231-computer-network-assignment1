@@ -4,9 +4,10 @@ import time
 from config import args
 import re
 import select
+from typing import Dict
 
 class Server:     
-    def __init__(self, host='localhost', port=50004) -> None:
+    def __init__(self, host='192.168.43.250', port=50004) -> None:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.bind((host, port))
         self.sock.listen(args.MAX_CLIENTS)
@@ -17,7 +18,7 @@ class Server:
 
         # key: The address that client send requests ((IP, port))
         # value: ClientInfo object
-        self.client_infos  = {}
+        self.client_infos: Dict[str, ClientInfo]  = {}
         self.clients_buffer = {}
 
     def start(self):
@@ -134,7 +135,7 @@ class Server:
         if client_address in self.client_infos.keys():
             self.client_infos[client_address].files = file_names
 
-    def respond_fetch(self, client_address: str, file_names: list[str]):
+    def respond_fetch(self, client_address: str, file_name: str):
         """
             @ Description: This function returns the list of peers' address that the client can connect to download 
             @ Input: None
@@ -145,31 +146,36 @@ class Server:
             @ Output: None
         """
 
-        return_addressess = ''
-        total_client_list = {}
-        for file_name in file_names:
-            avail_list = []
-            for addr in self.client_infos.keys():
-                if file_name in self.client_infos[addr].get_files() and addr != client_address:
-                    avail_list.append(addr)
-            
-            total_client_list.update({file_name: avail_list})
-            
-        if total_client_list:
-            for file_name in total_client_list.keys():
-                if total_client_list[file_name]:
-                    # find address with minimum number of files in repo directory
-                    found_address = min(total_client_list[file_name], key=lambda addr: len(self.client_infos[addr].get_files()))
-                else:
-                    found_address = None
-
-                # print("Address to download: ", found_address)
-                if found_address:
-                    return_addressess += self.client_infos[found_address].get_upload_addr()[0] + ' ' + str(self.client_infos[found_address].get_upload_addr()[1]) + ' '
-                else:
-                    return_addressess += 'null null '
         
+        avail_list = []
+        for addr in self.client_infos.keys():
+            if file_name in self.client_infos[addr].get_files() and addr != client_address:
+                avail_list.append(addr)
+
+        return_addressess = ''
+        if avail_list:
+            for addr in avail_list:
+                return_addressess += self.client_infos[addr].get_upload_addr()[0] + ' ' + str(self.client_infos[addr].get_upload_addr()[1]) + ' '
+        else:
+            return_addressess += 'null null '
+            
         return return_addressess.strip()
+
+        # if total_client_list:
+        #     for file_name in total_client_list.keys():
+        #         if total_client_list[file_name]:
+        #             # find address with minimum number of files in repo directory
+        #             found_address = min(total_client_list[file_name], key=lambda addr: len(self.client_infos[addr].get_files()))
+        #         else:
+        #             found_address = None
+
+        #         # print("Address to download: ", found_address)
+        #         if found_address:
+        #             return_addressess += self.client_infos[found_address].get_upload_addr()[0] + ' ' + str(self.client_infos[found_address].get_upload_addr()[1]) + ' '
+        #         else:
+        #             return_addressess += 'null null '
+        
+        
         
     def respond_publish(self, client_address: str, repo_file_name: str):
         """
@@ -180,7 +186,7 @@ class Server:
         """
 
         if repo_file_name not in self.client_infos[client_address].get_files():
-            self.client_infos[client_address].get_files().append(repo_file_name)
+            self.client_infos[client_address].files += repo_file_name
         return 'success'
 
     def close(self):
