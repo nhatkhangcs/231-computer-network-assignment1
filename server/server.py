@@ -184,9 +184,9 @@ class Server:
             @ Return: the response in string data type
             @ Output: Update the files data structure of the corresponding ClientInfo object
         """
-
+        repo_file_name = repo_file_name[0]
         if repo_file_name not in self.client_infos[client_address].get_files():
-            self.client_infos[client_address].files += repo_file_name
+            self.client_infos[client_address].get_files().append(repo_file_name)
         return 'success'
 
     def close(self):
