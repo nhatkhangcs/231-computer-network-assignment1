@@ -9,7 +9,7 @@ import select
 from typing import List, Dict
 
 class Client():
-    def __init__(self, server_host='localhost', server_port=50004) -> None:
+    def __init__(self, server_host='192.168.43.250', server_port=50004) -> None:
         # the socket to listen to server messages
         self.server_listen_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # the socket to send messages to the server
@@ -17,7 +17,7 @@ class Client():
         self.server_send_sock.settimeout(10)
         # The upload address (listen forever for upload requests)
         self.upload_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.upload_sock.bind(('localhost', 0))
+        self.upload_sock.bind(('192.168.43.250', 0))
         self.upload_sock.listen(args.MAX_PARALLEL_DOWNLOADS)
 
         # server info
@@ -206,7 +206,7 @@ class Client():
             return
 
         with open("local/" + local_file_name, "rb") as f:
-            with open("repo/" + local_file_name, "wb") as f1:
+            with open("repo/" + repo_file_name, "wb") as f1:
                 f1.write(f.read())
 
         self.server_send_sock.send(('publish ' + repo_file_name).encode())
