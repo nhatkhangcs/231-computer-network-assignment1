@@ -266,9 +266,9 @@ class Client():
                 file_to_addrs[filename] = addresses
 
         if len(file_to_addrs.keys()) == 1:
-            filename = file_to_addrs.keys()[0]
+            filename = list(file_to_addrs.keys())[0]
             addrs = file_to_addrs[filename]
-            self.download(filename, addrs, 0)
+            self.handle_download(filename, addrs, 0)
             return
         
         for i, (filename, addrs) in enumerate(file_to_addrs.items()):
@@ -278,7 +278,7 @@ class Client():
         
         download_threads = []
         for i, (filename, addrs) in enumerate(file_to_addrs.items()):
-            download_threads.append(threading.Thread(target=self.download, args=[filename, addrs, i], daemon=True))
+            download_threads.append(threading.Thread(target=self.handle_download, args=[filename, addrs, i], daemon=True))
             download_threads[i].start()
             
         
