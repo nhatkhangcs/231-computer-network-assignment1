@@ -299,7 +299,7 @@ class Client():
             print('Failed to send \'ready\' message to peer ' + upload_address[0] + ' ' + upload_address[1] + ' to download file ' + file_name + ', (connection timeout)')
             return
         
-        progess_bar = tqdm(total=file_size, desc=file_name, leave=False, unit_scale=True, unit='B', position=position, file=sys.stdout, colour='green')
+        progess_bar = tqdm(total=file_size, desc=file_name, leave=True, unit_scale=True, unit='B', position=position, file=sys.stdout, colour='green')
 
 
         if full_download:
