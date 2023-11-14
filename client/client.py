@@ -307,8 +307,6 @@ class Client():
             received_bytes = self.unfinished_downloads[file_name].current_size
         data = b''
 
-        if full_download:
-            os.makedirs('temp/' + file_name)
         with open('temp/' + file_name, 'wb') as file:
             if not full_download:
                 file.seek(self.unfinished_downloads[file_name].current_size)
@@ -327,7 +325,6 @@ class Client():
                 file.flush()
         
         os.replace('temp/' + file_name, 'repo/' + file_name)
-        os.remove('temp/' + file_name)
 
         sock.close()
 
