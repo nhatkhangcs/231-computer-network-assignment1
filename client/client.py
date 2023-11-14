@@ -175,6 +175,11 @@ class Client():
             if splited_command[0] == 'close':
                 self.close()
                 break
+
+            if splited_command[0] == 'list':
+                self.list_out()
+                continue
+            
             if len(splited_command) <= 1:
                 print('Please enter the arguments for the command!')
                 continue
@@ -190,6 +195,18 @@ class Client():
                 self.publish(arguments)
             elif command == 'fetch':
                 self.fetch(arguments)
+
+    def list_out(self):
+        """
+            @ Description: This function execute the 'list' command
+            @ Input: None
+            @ Return: None
+            @ Output: Execute the 'list' command and receive respond from the server
+        """
+        dir_list = os.listdir("repo")
+        print('List of files in client/repo:')
+        for file in dir_list:
+            print(file)
 
     def publish(self, arguments):
         """
@@ -233,23 +250,32 @@ class Client():
         filenames = [filename for filename in filenames if filename not in os.listdir("repo")]
         if len(filenames) == 0:
             return
-        fetch_cmd = 'fetch ' + ' '.join(filenames)
-        self.server_send_sock.send(fetch_cmd.encode())
-        data = ''
-        while not data:
-            data = self.server_send_sock.recv(1024).decode()
+        
+        file_to_addrs: Dict[str, List[str]] = {}
+        for filename in filenames:
 
-        addresses = data.split()
-        addresses = [addresses[n:n + 2] for n in range(0, len(addresses), 2)]
+            fetch_cmd = 'fetch ' + filename
+            self.server_send_sock.send(fetch_cmd.encode())
+            data = ''
+            while not data:
+                data = self.server_send_sock.recv(1024).decode()
+            
+            if data != 'null null':
+                addresses = data.split()
+                addresses = [addresses[n:n + 2] for n in range(0, len(addresses), 2)]
+                file_to_addrs[filename] = addresses
 
-        if len(addresses) == 1:
-            self.download(filenames[0], addresses[0], 0)
+        if len(file_to_addrs.keys()) == 1:
+            filename = file_to_addrs.keys()[0]
+            addrs = file_to_addrs[filename]
+            self.download(filename, addrs, 0)
             return
         
         download_threads = []
-        for i in range(len(addresses)):
-            download_threads.append(threading.Thread(target=self.download, args=[filenames[i], addresses[i], i], daemon=True))
+        for i, (filename, addrs) in enumerate(file_to_addrs.items()):
+            download_threads.append(threading.Thread(target=self.download, args=[filename, addrs, i], daemon=True))
             download_threads[i].start()
+            
         
         for thread in download_threads:
             thread.join()
@@ -257,7 +283,7 @@ class Client():
         sys.stdout.flush()
         print('\n\n')
 
-    def download(self, file_name: str, upload_address: str, position=0):
+    def download(self, file_name: str, upload_addresses: str, position=0):
         """
             @ Description: This function download the file from other peers
             @ Input: 
