@@ -32,6 +32,10 @@ class Client():
         # list of unfinished downloads
         self.unfinished_downloads: Dict[str, File] = {}
 
+        # remove all temp files
+        for file in os.listdir('temp'):
+            os.remove('temp/' + file)
+
         self.setup()
 
     def start(self):
