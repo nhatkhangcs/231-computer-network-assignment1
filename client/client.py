@@ -214,6 +214,7 @@ class Client():
                 <upload peer 1 IP> <upload peer 1 port> <upload peer 2 IP> <upload peer 2 port> ...
                 with  <upload peer i IP> <upload peer i port> correspond to the file i
         """
+        filenames = [filename for filename in filenames if filename not in os.listdir("repo")]
         fetch_cmd = 'fetch ' + ' '.join(filenames)
         self.server_send_sock.send(fetch_cmd.encode())
         data = ''
