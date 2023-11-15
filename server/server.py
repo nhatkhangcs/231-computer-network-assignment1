@@ -159,23 +159,7 @@ class Server:
         else:
             return_addressess += 'null null '
 
-        return return_addressess.strip()
-
-        # if total_client_list:
-        #     for file_name in total_client_list.keys():
-        #         if total_client_list[file_name]:
-        #             # find address with minimum number of files in repo directory
-        #             found_address = min(total_client_list[file_name], key=lambda addr: len(self.client_infos[addr].get_files()))
-        #         else:
-        #             found_address = None
-
-        #         # print("Address to download: ", found_address)
-        #         if found_address:
-        #             return_addressess += self.client_infos[found_address].get_upload_addr()[0] + ' ' + str(self.client_infos[found_address].get_upload_addr()[1]) + ' '
-        #         else:
-        #             return_addressess += 'null null '
-        
-        
+        return return_addressess.strip()    
         
     def respond_publish(self, client_address: str, repo_file_name: str):
         """
