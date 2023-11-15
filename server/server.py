@@ -232,7 +232,7 @@ class Server:
 
         while True:
             input_str = input('>> ')
-            pattern = r'^\s*\b(?:discover|ping)\b'
+            pattern = r'^\s*\b(?:discover|ping|list)\b'
             matched = re.search(pattern, input_str)
 
             if not matched:
@@ -245,6 +245,11 @@ class Server:
             input_str = re.sub(r'\s\s+', ' ', input_str)
 
             splited_command = input_str.split()
+            if splited_command[0] == 'list':
+                self.list_out()
+                print('\n')
+                continue
+
             if len(splited_command) <= 1:
                 print('Please enter the arguments for the command!')
                 continue
@@ -283,6 +288,11 @@ class Server:
                 self.discover(IP, int(port))
 
             print('\n')
+
+    def list_out(self):
+        # list out all the current clients
+        for client_address in self.client_infos.keys():
+            print(str(client_address))
     
     def ping(self, IP: str, port: int):
         """
