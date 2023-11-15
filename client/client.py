@@ -188,7 +188,7 @@ class Client():
         """
         while True:
             input_str = input('>> ')
-            pattern = r'^\s*\b(?:publish|fetch|close)\b'
+            pattern = r'^\s*\b(?:publish|fetch|close|list)\b'
             matched = re.search(pattern, input_str)
 
             if not matched:
@@ -234,7 +234,7 @@ class Client():
             @ Output: Execute the 'list' command and receive respond from the server
         """
         dir_list = os.listdir("repo")
-        print('List of files in client/repo:')
+        print('List of files in repo:')
         for file in dir_list:
             print(file)
 
@@ -299,7 +299,7 @@ class Client():
             print('Available peers for file ' + filename + ':')
             for addr in addrs:
                 print('\t' + addr[0] + ' ' + addr[1])
-                
+
         if len(file_to_addrs.keys()) == 1:
             filename = list(file_to_addrs.keys())[0]
             addrs = file_to_addrs[filename]
