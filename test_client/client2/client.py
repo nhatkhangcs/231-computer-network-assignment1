@@ -7,6 +7,7 @@ from config import args
 import sys
 import select
 from typing import List, Dict
+import time
 
 class Client():
     def __init__(self, server_host='localhost', server_port=50004) -> None:
@@ -20,6 +21,10 @@ class Client():
         self.upload_sock.bind(('localhost', 0))
         self.upload_sock.listen(args.MAX_PARALLEL_DOWNLOADS)
 
+        # The keep-alive sockets
+        self.send_keep_alive_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.listen_keep_alive_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
         # server info
         self.server_host = server_host
         self.server_port = server_port
@@ -28,6 +33,8 @@ class Client():
         self.server_listen_thread = threading.Thread(target=self.listen_server, daemon=True)
         # the thread to listen to download requests from other peers
         self.upload_thread = threading.Thread(target=self.listen_upload, daemon=True)
+        # the thread to send keep-alive messages to server
+        self.send_keep_alive_thread = threading.Thread(target=self.send_keep_alive, daemon=True)
 
         # list of unfinished downloads
         self.unfinished_downloads: Dict[str, File] = {}
@@ -55,6 +62,7 @@ class Client():
         """
         self.server_listen_thread.start()
         self.upload_thread.start()
+        self.send_keep_alive_thread.start()
         self.cmd_forever()
 
     def setup(self):
@@ -82,10 +90,32 @@ class Client():
                             ' ' + ' '.join(dir_list)
         self.server_listen_sock.send(send_data.encode())
 
+        self.send_keep_alive_sock.connect((self.server_host, self.server_port))
+        self.send_keep_alive_sock.send(('keepalive ' + self.server_send_sock.getsockname()[0] + ' ' + str(self.server_send_sock.getsockname()[1])).encode())
+
         print('Sending address: ' + self.server_send_sock.getsockname()[0] + ' ' + str(self.server_send_sock.getsockname()[1]))
         print('Listening address: ' + self.server_listen_sock.getsockname()[0] + ' ' + str(self.server_listen_sock.getsockname()[1]))
         print('Upload address: ' + self.upload_sock.getsockname()[0] + ' ' + str(self.upload_sock.getsockname()[1]))
     
+    def send_keep_alive(self):
+        self.send_keep_alive_sock.settimeout(10)
+        while True:
+            time.sleep(3)
+            # print('sending keep alive')
+            if send_timeout(self.send_keep_alive_sock, 'keepalive'.encode(), 3) == False:
+                self.force_close()
+                break
+
+            data = recv_timeout(self.send_keep_alive_sock, 1024, 3).decode()
+            if data == '' or data == None:
+                self.force_close()
+                break
+
+    def force_close(self):
+        self.close_sockets()
+        print('Connection to server is lost, shutting down...')
+        os._exit(0)
+
     def listen_server(self):
         """
             @ Description: This function listens forever for the messages from server and responds them
@@ -434,6 +464,7 @@ class Client():
         self.server_listen_sock.close()
         self.server_send_sock.close()
         self.upload_sock.close()
+        self.send_keep_alive_sock.close()
 
 class File():
     def __init__(self, file_name, full_size_bytes, current_size_bytes) -> None:
@@ -451,6 +482,17 @@ def recv_timeout(socket: socket.socket, recv_size_byte, timeout=2) -> bytearray:
     else:
         socket.setblocking(True)
         return None
+    
+def send_timeout(socket: socket.socket, data: bytearray, timeout=2):
+    socket.setblocking(False)
+    ready = select.select([], [socket], [], timeout)
+    if ready[1]:
+        socket.send(data)
+        socket.setblocking(True)
+        return True
+    else:
+        socket.setblocking(True)
+        return False
 
 def main():
     client = Client()
