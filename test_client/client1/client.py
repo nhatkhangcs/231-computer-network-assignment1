@@ -304,6 +304,7 @@ class Client():
             filename = list(file_to_addrs.keys())[0]
             addrs = file_to_addrs[filename]
             self.handle_download(filename, addrs, 0)
+            print('\n')
             return
         
         
