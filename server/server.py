@@ -281,6 +281,8 @@ class Server:
                 self.ping(IP, int(port))
             elif command == 'discover':
                 self.discover(IP, int(port))
+
+            print('\n')
     
     def ping(self, IP: str, port: int):
         """
