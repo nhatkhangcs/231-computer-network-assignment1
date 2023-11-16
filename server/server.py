@@ -43,7 +43,10 @@ class Server:
         """
 
         while True:
-            client_socket, client_address = self.sock.accept()
+            try:
+                client_socket, client_address = self.sock.accept()
+            except Exception as e:
+                return
 
             data = ''
             while True:
@@ -114,10 +117,17 @@ class Server:
             while True:
                 time.sleep(3)
                 # print('listening')
-                data = recv_timeout(client_socket, 1024, 3)
+                data = None
+                try:
+                    data = recv_timeout(client_socket, 1024, 3)
+                except Exception as e:
+                    self.remove_client(client_address, send_response=False)
+                    break
+
                 if data == None or data.decode() == '' or data.decode() != 'keepalive':
                     self.remove_client(client_address, send_response=False)
                     break
+
                 if send_timeout(client_socket, 'keepalive'.encode(), 3) == False:
                     self.remove_client(client_address, send_response=False)
                     break
@@ -219,6 +229,9 @@ class Server:
         for address in self.client_infos.keys():
             self.client_infos[address].get_sending_sock().close()
             self.client_infos[address].get_identifying_sock().close()
+        
+        # terminate all threads
+        # self.listening_thread.join()
 
     def cmd_forever(self) -> None:
         """
