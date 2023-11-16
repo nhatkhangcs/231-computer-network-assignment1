@@ -65,9 +65,6 @@ class Server:
                         client_info.listening_thread.start()
                         client_info.listen_keep_alive_thread.start()
                         continue
-                    # else:
-                    #     self.client_infos[(original_IP, original_port)].send_keep_alive_sock = client_socket
-                    #     self.client_infos[(original_IP, original_port)].send_keep_alive_thread = threading.Thread(target=self.send_keep_alive, args=[client_socket, (original_IP, original_port)], daemon=True)
 
                 original_IP = data[0]
                 original_port = int(data[1])
@@ -251,7 +248,7 @@ class Server:
             splited_command = input_str.split()
             if splited_command[0] == 'list':
                 self.list_out()
-                print('\n')
+                print()
                 continue
 
             if len(splited_command) <= 1:
