@@ -80,6 +80,6 @@ If you'd like to contribute, please fork the repository and create a pull reques
 This project is licensed under the HCMUT license.
 
 # Acknowledgments
-Special thanks to [Group Name] for their contribution to defining the application protocols.
+Special thanks to Group 6 for their contribution to defining the application protocols.
 
 Feel free to modify this template to suit your project structure and requirements.
