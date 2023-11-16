@@ -53,7 +53,7 @@ class Client():
 
         self.setup()
 
-    def start(self):
+    def start(self) -> None:
         """
             @ Description: This function starts all the threads parallelly and wait for joining
             @ Input: None
@@ -65,7 +65,7 @@ class Client():
         self.send_keep_alive_thread.start()
         self.cmd_forever()
 
-    def setup(self):
+    def setup(self) -> None:
         """
             @ Description: This function sets up the connection between this client and server
             @ Input: None
@@ -162,7 +162,7 @@ class Client():
             thread.start()
 
         
-    def upload(self, file_name: str, byte_offset: int, download_socket: socket.socket):
+    def upload(self, file_name: str, byte_offset: int, download_socket: socket.socket) -> None:
         """
             @ Description: This function upload the file to other peers
             @ Input: 
@@ -229,7 +229,7 @@ class Client():
             elif command == 'fetch':
                 self.fetch(arguments)
 
-    def list_out(self):
+    def list_out(self) -> None:
         """
             @ Description: This function execute the 'list' command
             @ Input: None
@@ -241,7 +241,7 @@ class Client():
         for file in dir_list:
             print(file)
 
-    def publish(self, arguments):
+    def publish(self, arguments) -> None:
         """
             @ Description: This function execute the 'publish' command
             @ Input: arguments - the list of 2 elements, the first is <lname>, second is <fname> (check the Assignment)  
@@ -267,7 +267,7 @@ class Client():
         print('Server response: ' + data + '\n')
 
 
-    def fetch(self, filenames: list[str]):
+    def fetch(self, filenames: list[str]) -> None:
         """
             @ Description: This function execute the 'fetch' command (multithreaded)
             @ Input: arguments - the list of file names to download, comes in the form
@@ -322,7 +322,7 @@ class Client():
         sys.stdout.flush()
         print('\n\n')
 
-    def handle_download(self, filename: str, upload_addresses: List[str], position: int):
+    def handle_download(self, filename: str, upload_addresses: List[str], position: int) -> None:
         """
             @ Description: This function handle the download of a single file
             @ Input: 
@@ -445,7 +445,7 @@ class Client():
         dir_list = os.listdir("repo")
         self.server_listen_sock.sendall(' '.join(dir_list).encode())
 
-    def close(self):
+    def close(self) -> None:
         """
             @ Description: This function close all sockets and notify the server
             @ Input: None
@@ -461,17 +461,11 @@ class Client():
             print('Server response: ' + response)
         self.close_sockets()
     
-    def close_sockets(self):
+    def close_sockets(self) -> None:
         self.server_listen_sock.close()
         self.server_send_sock.close()
         self.upload_sock.close()
         self.send_keep_alive_sock.close()
-
-class File():
-    def __init__(self, file_name, full_size_bytes, current_size_bytes) -> None:
-        self.file_name = file_name
-        self.full_size = full_size_bytes
-        self.current_size = current_size_bytes
 
 def recv_timeout(socket: socket.socket, recv_size_byte, timeout=2) -> bytearray:
     socket.setblocking(False)
@@ -484,7 +478,7 @@ def recv_timeout(socket: socket.socket, recv_size_byte, timeout=2) -> bytearray:
         socket.setblocking(True)
         return None
     
-def send_timeout(socket: socket.socket, data: bytearray, timeout=2):
+def send_timeout(socket: socket.socket, data: bytearray, timeout=2) -> bool:
     socket.setblocking(False)
     ready = select.select([], [socket], [], timeout)
     if ready[1]:
@@ -494,6 +488,12 @@ def send_timeout(socket: socket.socket, data: bytearray, timeout=2):
     else:
         socket.setblocking(True)
         return False
+    
+class File():
+    def __init__(self, file_name, full_size_bytes, current_size_bytes) -> None:
+        self.file_name = file_name
+        self.full_size = full_size_bytes
+        self.current_size = current_size_bytes
 
 def main():
     client = Client()
