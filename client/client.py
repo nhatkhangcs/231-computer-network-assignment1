@@ -191,6 +191,7 @@ class Client():
         """
         while True:
             input_str = input('>> ')
+            if input_str == '': continue
             pattern = r'^\s*\b(?:publish|fetch|close|list)\b'
             matched = re.search(pattern, input_str)
 
@@ -237,9 +238,12 @@ class Client():
             @ Output: Execute the 'list' command and receive respond from the server
         """
         dir_list = os.listdir("repo")
-        print('List of files in repo:')
+        print('----------------------------------')
         for file in dir_list:
             print(file)
+        
+        print('----------------------------------')
+        print()
 
     def publish(self, arguments) -> None:
         """
@@ -280,9 +284,23 @@ class Client():
                 <upload peer 1 IP> <upload peer 1 port> <upload peer 2 IP> <upload peer 2 port> ...
                 with  <upload peer i IP> <upload peer i port> correspond to the file i
         """
-        filenames = [filename for filename in filenames if filename not in os.listdir("repo")]
-        if len(filenames) == 0:
+        # filter out some files that already exist in client/repo
+        final_filenames = []
+        for filename in filenames:
+            if filename in os.listdir("repo"):
+                print('File ' + filename + ' already exists in your repo folder!')
+                reply = input('Do you want to overwrite it? (y/n): ')
+                if reply == 'y':
+                    final_filenames.append(filename)
+            else:
+                final_filenames.append(filename)
+
+        if len(filenames) == 0 or len(final_filenames) == 0:
+            print('No files to fetch!')
             return
+        
+        # confirmed files to fetch
+        filenames = final_filenames
         
         file_to_addrs: Dict[str, List[str]] = {}
         for filename in filenames:
@@ -298,6 +316,10 @@ class Client():
                 addresses = [addresses[n:n + 2] for n in range(0, len(addresses), 2)]
                 file_to_addrs[filename] = addresses
 
+            else:
+                print('No peers available for file ' + filename + '!')
+                continue
+
         for i, (filename, addrs) in enumerate(file_to_addrs.items()):
             print('Available peers for file ' + filename + ':')
             for addr in addrs:
@@ -309,18 +331,16 @@ class Client():
             self.handle_download(filename, addrs, 0)
             return
         
-        
         download_threads = []
         for i, (filename, addrs) in enumerate(file_to_addrs.items()):
             download_threads.append(threading.Thread(target=self.handle_download, args=[filename, addrs, i], daemon=True))
             download_threads[i].start()
             
-        
         for thread in download_threads:
             thread.join()
 
         sys.stdout.flush()
-        print('\n\n')
+        print()
 
     def handle_download(self, filename: str, upload_addresses: List[str], position: int) -> None:
         """
