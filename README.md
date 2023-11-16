@@ -55,11 +55,11 @@ Build a simple file-sharing application using the TCP/IP protocol stack with app
 
 **More description**: On the client terminal, you will see 3 different addresses:
 
-- Sending address: This is the address that is sending the request to the server.
+- ```Sending address```: This is the address that is sending the request to the server.
 
-- Listening address: This is the address that is listening requests from server.
+- ```Listening address```: This is the address that is listening requests from server.
 
-- Upload address: This is the address that is used to upload file to other clients.
+- ```Upload address```: This is the address that is used to upload file to other clients.
 
 If you want to use server to ping client, please ping the sending address of the client.
 
