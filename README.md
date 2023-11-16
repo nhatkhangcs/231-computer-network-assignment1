@@ -17,7 +17,7 @@ Build a simple file-sharing application using the TCP/IP protocol stack with app
 
 ### Client command-shell interpreter
 - Clients have a simple command-shell interpreter with two commands:
-  1. `publish lname fname`: Adds a local file (`lname`) to the client's repository with the name `fname`. This information is conveyed to the server.
+  1. `publish lname fname`: Adds a local file (`lname`) to the client's repository with the name `fname`. This information is conveyed to the server
   2. `fetch fname`: Requests a copy of the target file from other clients and adds it to the local repository.
 
 ### Server command-shell interpreter
@@ -41,17 +41,27 @@ Build a simple file-sharing application using the TCP/IP protocol stack with app
    cd 231-computer-network-assignment1
    ```
 
-3. Run the server in folder ```server```.
+3. Run the server in folder ```server``` in a different terminal.
    ```bash
    python server.py
    ```
 
-4. Run the server in folder ```client```
-    ```bash
-    python client.py
-    ```
+4. Run the server in folder ```client``` in a different terminal.
+   ```bash
+   python client.py
+   ```
 
 **NOTE**: If you want to test for multiple clients, navigate to folder ```test_client```. Here you can see list of ```client<x>``` folders with same structure as the ```client``` folder. The operation will be the same as above.
+
+**More description**: On the client terminal, you will see 3 different addresses:
+
+- Sending address: This is the address that is sending the request to the server.
+
+- Listening address: This is the address that is listening requests from server.
+
+- Upload address: This is the address that is used to upload file to other clients.
+
+If you want to use server to ping client, please ping the sending address of the client.
 
 ### Advanced commands in the application
 

@@ -22,7 +22,7 @@ class Server:
         self.client_infos: Dict[str, ClientInfo]  = {}
         self.clients_buffer = {}
 
-    def start(self):
+    def start(self) -> None:
         """
             @ Description: This function starts all the threads parallelly and wait for joining
             @ Input: None
@@ -33,7 +33,7 @@ class Server:
         self.listening_thread.start()
         self.cmd_forever()
 
-    def serve_forever(self):
+    def serve_forever(self) -> None:
         """
             @ Description: This function listens for all incoming connection request from clients and start serving clients
                 after having enough information
@@ -110,7 +110,7 @@ class Server:
                     self.client_infos[client_address] = client_info
                     self.clients_buffer.pop(client_address)
 
-    def listen_keep_alive(self, client_socket: socket.socket, client_address: str):
+    def listen_keep_alive(self, client_socket: socket.socket, client_address: str) -> None:
         client_socket.settimeout(3)
         try:
             while True:
@@ -123,6 +123,7 @@ class Server:
                 if send_timeout(client_socket, 'keepalive'.encode(), 3) == False:
                     self.remove_client(client_address, send_response=False)
                     break
+
         except Exception as e:
             if client_address in self.client_infos.keys():
                 self.remove_client(client_address, send_response=False)
@@ -134,7 +135,6 @@ class Server:
             @ Return: None
             @ Output: None
         """
-
         while True:
             try:
                 data = client_socket.recv(1024).decode()
@@ -156,7 +156,7 @@ class Server:
             elif command == 'close':
                 self.remove_client(client_address)
 
-    def remove_client(self, client_address: str, send_response=True):
+    def remove_client(self, client_address: str, send_response=True) -> None:
         if send_response:
             self.client_infos[client_address].get_identifying_sock().send('done'.encode())
         self.client_infos[client_address].get_identifying_sock().close()
@@ -164,11 +164,11 @@ class Server:
         self.client_infos[client_address].get_listen_keep_alive_sock().close()
         self.client_infos.pop(client_address)
 
-    def respond_update(self, client_address: str, file_names: list[str]):
+    def respond_update(self, client_address: str, file_names: list[str]) -> None:
         if client_address in self.client_infos.keys():
             self.client_infos[client_address].files = file_names
 
-    def respond_fetch(self, client_address: str, file_names: str):
+    def respond_fetch(self, client_address: str, file_names: str) -> str:
         """
             @ Description: This function returns the list of peers' address that the client can connect to download 
             @ Input: None
@@ -194,7 +194,7 @@ class Server:
 
         return return_addressess.strip()    
         
-    def respond_publish(self, client_address: str, repo_file_name: str):
+    def respond_publish(self, client_address: str, repo_file_name: str) -> str:
         """
             @ Description: This process the client's 'publish' command and send a response to acknowledge the client
             @ Input: None
@@ -206,7 +206,7 @@ class Server:
             self.client_infos[client_address].get_files().append(repo_file_name)
         return 'success'
 
-    def close(self):
+    def close(self) -> None:
         """
             @ Description: This function close all sockets
             @ Input: None
@@ -219,7 +219,7 @@ class Server:
             self.client_infos[address].get_sending_sock().close()
             self.client_infos[address].get_identifying_sock().close()
 
-    def cmd_forever(self):
+    def cmd_forever(self) -> None:
         """
             @ Description: This function listens forever for the user input
             @ Input: None
@@ -286,12 +286,12 @@ class Server:
 
             print('\n')
 
-    def list_out(self):
+    def list_out(self) -> None:
         # list out all the current clients
         for client_address in self.client_infos.keys():
             print(str(client_address))
     
-    def ping(self, IP: str, port: int):
+    def ping(self, IP: str, port: int) -> None:
         """
             @ Description: This function pings the client, with timeout
             @ Input: None
@@ -322,7 +322,7 @@ class Server:
         else:
             print('Client is offline')
 
-    def discover(self, IP: str, port: int):
+    def discover(self, IP: str, port: int) -> None:
         """
             @ Description: This function discover the client
             @ Input: None
@@ -346,7 +346,7 @@ class ClientInfo():
     def __init__(self, identifying_address=None, identifying_sock=None, 
                  sending_address=None, sending_sock=None, upload_address=None, 
                  listening_thread=None, files=None, listen_keep_alive_sock=None, send_keep_alive_sock=None,
-                 listen_keep_alive_thread=None, send_keep_alive_thread=None):
+                 listen_keep_alive_thread=None, send_keep_alive_thread=None) -> None:
         self.identifying_address = identifying_address
         self.identifying_sock = identifying_sock
         self.sending_address = sending_address
@@ -360,7 +360,7 @@ class ClientInfo():
         self.send_keep_alive_thread = send_keep_alive_thread
 
     def set_info(self, identifying_address, identifying_sock, sending_address, 
-                 sending_sock, upload_address, listening_thread, files):
+                 sending_sock, upload_address, listening_thread, files) -> None:
         self.identifying_address = identifying_address
         self.identifying_sock = identifying_sock
         self.sending_address = sending_address
@@ -384,7 +384,7 @@ class ClientInfo():
     def get_files(self) -> list[str]:
         return self.files
     
-def recv_timeout(socket: socket.socket, recv_size_byte, timeout=2):
+def recv_timeout(socket: socket.socket, recv_size_byte, timeout=2) -> bytearray:
     socket.setblocking(False)
     ready = select.select([socket], [], [], timeout)
     if ready[0]:
@@ -395,7 +395,7 @@ def recv_timeout(socket: socket.socket, recv_size_byte, timeout=2):
         socket.setblocking(True)
         return None
     
-def send_timeout(socket: socket.socket, data: bytearray, timeout=2):
+def send_timeout(socket: socket.socket, data: bytearray, timeout=2) -> bool:
     socket.setblocking(False)
     ready = select.select([], [socket], [], timeout)
     if ready[1]:
