@@ -110,6 +110,7 @@ class Server:
                     self.client_infos[client_address] = client_info
                     self.clients_buffer.pop(client_address)
 
+
     def listen_keep_alive(self, client_socket: socket.socket, client_address: str) -> None:
         client_socket.settimeout(3)
         try:
@@ -127,6 +128,7 @@ class Server:
         except Exception as e:
             if client_address in self.client_infos.keys():
                 self.remove_client(client_address, send_response=False)
+
 
     def serve_client(self, client_socket: socket.socket, client_address: str):
         """
@@ -156,6 +158,7 @@ class Server:
             elif command == 'close':
                 self.remove_client(client_address)
 
+
     def remove_client(self, client_address: str, send_response=True) -> None:
         if send_response:
             self.client_infos[client_address].get_identifying_sock().send('done'.encode())
@@ -164,9 +167,11 @@ class Server:
         self.client_infos[client_address].get_listen_keep_alive_sock().close()
         self.client_infos.pop(client_address)
 
+
     def respond_update(self, client_address: str, file_names: list[str]) -> None:
         if client_address in self.client_infos.keys():
             self.client_infos[client_address].files = file_names
+
 
     def respond_fetch(self, client_address: str, file_names: list[str]) -> str:
         """

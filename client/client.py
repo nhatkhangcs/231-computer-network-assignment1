@@ -284,27 +284,11 @@ class Client():
                 <upload peer 1 IP> <upload peer 1 port> <upload peer 2 IP> <upload peer 2 port> ...
                 with  <upload peer i IP> <upload peer i port> correspond to the file i
         """
-        # filter out some files that already exist in client/repo
-        final_filenames = []
-        for filename in filenames:
-            if filename in os.listdir("repo"):
-                print('File ' + filename + ' already exists in your repo folder!')
-                reply = input('Do you want to overwrite it? (y/n): ')
-                if reply == 'y':
-                    final_filenames.append(filename)
-            else:
-                final_filenames.append(filename)
 
-        if len(filenames) == 0 or len(final_filenames) == 0:
-            print('No files to fetch!')
-            return
-        
-        # confirmed files to fetch
-        filenames = final_filenames
-        
+        # filter
+        filenames = [filename for filename in filenames if filename not in os.listdir("repo")]
         file_to_addrs: Dict[str, List[str]] = {}
         for filename in filenames:
-
             fetch_cmd = 'fetch ' + filename
             self.server_send_sock.send(fetch_cmd.encode())
             data = ''
@@ -316,10 +300,10 @@ class Client():
                 addresses = [addresses[n:n + 2] for n in range(0, len(addresses), 2)]
                 file_to_addrs[filename] = addresses
 
-            else:
-                print('No peers available for file ' + filename + '!')
-                continue
-
+        if len(file_to_addrs) == 0:
+            print('All files are already in your local folder!')
+            return
+        
         for i, (filename, addrs) in enumerate(file_to_addrs.items()):
             print('Available peers for file ' + filename + ':')
             for addr in addrs:
@@ -352,6 +336,7 @@ class Client():
             @ Return: None
             @ Output: Download the file sucessfully
         """
+        download_success = False
         for upload_address in upload_addresses:
             download_success = self.download(filename, upload_address, position)
             if download_success:
