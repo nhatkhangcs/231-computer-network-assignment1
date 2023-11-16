@@ -1,31 +1,31 @@
-# File Sharing Application README
+# File sharing Application
 
 ## Objective
 Build a simple file-sharing application using the TCP/IP protocol stack with application protocols defined by each group.
 
-## Application Description
+## Application description
 
-### Centralized Server
+### Centralized server
 - The centralized server keeps track of connected clients and the files they store.
 - Clients inform the server about their local files without transmitting file data.
 
-### Client Functionality
+### Client functionality
 - Clients request files not in their repository from the server.
 - The server identifies clients storing the requested file and sends their identities to the requesting client.
 - The requesting client selects a source node, and the file is directly fetched without server intervention.
 - Client code is multithreaded to support multiple simultaneous file downloads.
 
-### Client Command-Shell Interpreter
+### Client command-shell interpreter
 - Clients have a simple command-shell interpreter with two commands:
   1. `publish lname fname`: Adds a local file (`lname`) to the client's repository with the name `fname`. This information is conveyed to the server.
   2. `fetch fname`: Requests a copy of the target file from other clients and adds it to the local repository.
 
-### Server Command-Shell Interpreter
+### Server command-shell interpreter
 - The server has a command-shell interpreter with two commands:
   1. `discover hostname`: Discovers the list of local files of the host named `hostname`.
   2. `ping hostname`: Live-checks the host named `hostname`.
 
-## Getting Started
+## Getting started
 
 ### Prerequisites
 - Make sure you have Python installed on your system.
