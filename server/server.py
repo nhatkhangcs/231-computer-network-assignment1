@@ -168,7 +168,7 @@ class Server:
         if client_address in self.client_infos.keys():
             self.client_infos[client_address].files = file_names
 
-    def respond_fetch(self, client_address: str, file_names: str) -> str:
+    def respond_fetch(self, client_address: str, file_names: list[str]) -> str:
         """
             @ Description: This function returns the list of peers' address that the client can connect to download 
             @ Input: None
@@ -179,7 +179,6 @@ class Server:
             @ Output: None
         """
         file_name = file_names[0]
-    
         avail_list = []
         for addr in self.client_infos.keys():
             if file_name in self.client_infos[addr].get_files() and addr != client_address:
@@ -229,6 +228,9 @@ class Server:
 
         while True:
             input_str = input('>> ')
+            # if user entered nothing, continue
+            if input_str == '': continue
+            
             pattern = r'^\s*\b(?:discover|ping|list)\b'
             matched = re.search(pattern, input_str)
 
@@ -284,7 +286,7 @@ class Server:
             elif command == 'discover':
                 self.discover(IP, int(port))
 
-            print('\n')
+            print()
 
     def list_out(self) -> None:
         # list out all the current clients
@@ -337,8 +339,11 @@ class Server:
             client_info.get_sending_sock().send('discover'.encode())
             # wait for response
             response = client_info.get_sending_sock().recv(1024).decode().split()
+            print('----------------------------------')
             for file in response:
                 print(file)
+            print('----------------------------------')
+
         else:
             print('Client is offline')
         
@@ -358,16 +363,6 @@ class ClientInfo():
         self.send_keep_alive_sock = send_keep_alive_sock
         self.listen_keep_alive_thread = listen_keep_alive_thread
         self.send_keep_alive_thread = send_keep_alive_thread
-
-    def set_info(self, identifying_address, identifying_sock, sending_address, 
-                 sending_sock, upload_address, listening_thread, files) -> None:
-        self.identifying_address = identifying_address
-        self.identifying_sock = identifying_sock
-        self.sending_address = sending_address
-        self.sending_sock = sending_sock
-        self.upload_address = upload_address
-        self.listening_thread = listening_thread
-        self.files = files
 
     def get_sending_sock(self) -> socket.socket:
         return self.sending_sock
