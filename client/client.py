@@ -147,9 +147,11 @@ class Client():
             @ Additional notes: the request message comes in the form:
                 <file name>
         """
-        # TODO: forever listen for incoming upload requests
         while True:
-            download_socket, _ = self.upload_sock.accept()
+            try:
+                download_socket, _ = self.upload_sock.accept()
+            except Exception as e:
+                break
             request_file_and_offset = ''
             while not request_file_and_offset:
                 request_file_and_offset = download_socket.recv(1024).decode()
@@ -158,6 +160,7 @@ class Client():
             request_offset = int(request_file_and_offset[1])
             thread = threading.Thread(target=self.upload, args=(request_file, request_offset, download_socket), daemon=True)
             thread.start()
+
         
     def upload(self, file_name: str, byte_offset: int, download_socket: socket.socket):
         """

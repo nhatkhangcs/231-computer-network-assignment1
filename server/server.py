@@ -119,14 +119,11 @@ class Server:
                 data = recv_timeout(client_socket, 1024, 3)
                 if data == None or data.decode() == '' or data.decode() != 'keepalive':
                     self.remove_client(client_address, send_response=False)
-                    print('Removed client ' + str(client_address) + ' due to disconnect')
                     break
                 if send_timeout(client_socket, 'keepalive'.encode(), 3) == False:
                     self.remove_client(client_address, send_response=False)
-                    print('Removed client ' + str(client_address) + ' due to disconnect')
                     break
         except Exception as e:
-            print('Removed client ' + str(client_address) + ' due to disconnect')
             if client_address in self.client_infos.keys():
                 self.remove_client(client_address, send_response=False)
 

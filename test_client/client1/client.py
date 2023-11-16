@@ -147,9 +147,11 @@ class Client():
             @ Additional notes: the request message comes in the form:
                 <file name>
         """
-        # TODO: forever listen for incoming upload requests
         while True:
-            download_socket, _ = self.upload_sock.accept()
+            try:
+                download_socket, _ = self.upload_sock.accept()
+            except Exception as e:
+                break
             request_file_and_offset = ''
             while not request_file_and_offset:
                 request_file_and_offset = download_socket.recv(1024).decode()
@@ -158,6 +160,7 @@ class Client():
             request_offset = int(request_file_and_offset[1])
             thread = threading.Thread(target=self.upload, args=(request_file, request_offset, download_socket), daemon=True)
             thread.start()
+
         
     def upload(self, file_name: str, byte_offset: int, download_socket: socket.socket):
         """
@@ -188,7 +191,7 @@ class Client():
         """
         while True:
             input_str = input('>> ')
-            pattern = r'^\s*\b(?:publish|fetch|close)\b'
+            pattern = r'^\s*\b(?:publish|fetch|close|list)\b'
             matched = re.search(pattern, input_str)
 
             if not matched:
@@ -234,7 +237,7 @@ class Client():
             @ Output: Execute the 'list' command and receive respond from the server
         """
         dir_list = os.listdir("repo")
-        print('List of files in client/repo:')
+        print('List of files in repo:')
         for file in dir_list:
             print(file)
 
@@ -299,12 +302,11 @@ class Client():
             print('Available peers for file ' + filename + ':')
             for addr in addrs:
                 print('\t' + addr[0] + ' ' + addr[1])
-                
+
         if len(file_to_addrs.keys()) == 1:
             filename = list(file_to_addrs.keys())[0]
             addrs = file_to_addrs[filename]
             self.handle_download(filename, addrs, 0)
-            print('\n')
             return
         
         
