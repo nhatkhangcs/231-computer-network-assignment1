@@ -1,4 +1,4 @@
-# File sharing Application
+# File-sharing application
 
 ## Objective
 Build a simple file-sharing application using the TCP/IP protocol stack with application protocols defined by each group.
