@@ -30,7 +30,7 @@ Build a simple file-sharing application using the TCP/IP protocol stack with app
 ### Prerequisites
 - Make sure you have Python installed on your system.
 
-### Running the Application
+### Running the application
 1. Clone the repository.
    ```bash
    git clone https://github.com/nhatkhangcs/231-computer-network-assignment1.git
@@ -52,6 +52,16 @@ Build a simple file-sharing application using the TCP/IP protocol stack with app
     ```
 
 **NOTE**: If you want to test for multiple clients, navigate to folder ```test_client```. Here you can see list of ```client<x>``` folders with same structure as the ```client``` folder. The operation will be the same as above.
+
+### Advanced commands in the application
+
+Currently only the client side have advanced commands.
+
+#### Client side
+
+1. ```exit``` will exit the client side. Server side will acknowledge the disconnection of the client.
+
+2. ```list``` will list the client side's repository files.
 
 # Contributing
 If you'd like to contribute, please fork the repository and create a pull request.
