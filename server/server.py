@@ -8,7 +8,7 @@ from typing import Dict
 import time
 
 class Server:     
-    def __init__(self, host='localhost', port=50004) -> None:
+    def __init__(self, host='192.168.43.191', port=50004) -> None:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.bind((host, port))
         self.sock.listen(args.MAX_CLIENTS)
@@ -115,11 +115,11 @@ class Server:
         client_socket.settimeout(3)
         try:
             while True:
-                time.sleep(3)
+                time.sleep(60)
                 # print('listening')
                 data = None
                 try:
-                    data = recv_timeout(client_socket, 1024, 3)
+                    data = recv_timeout(client_socket, 1024, 20)
                 except Exception as e:
                     self.remove_client(client_address, send_response=False)
                     break
@@ -128,7 +128,7 @@ class Server:
                     self.remove_client(client_address, send_response=False)
                     break
 
-                if send_timeout(client_socket, 'keepalive'.encode(), 3) == False:
+                if send_timeout(client_socket, 'keepalive'.encode(), 20) == False:
                     self.remove_client(client_address, send_response=False)
                     break
 
