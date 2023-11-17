@@ -10,7 +10,7 @@ from typing import List, Dict
 import time
 
 class Client():
-    def __init__(self, server_host='localhost', server_port=50004) -> None:
+    def __init__(self, server_host='192.168.43.191', server_port=50004) -> None:
         # the socket to listen to server messages
         self.server_listen_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # the socket to send messages to the server
@@ -50,6 +50,9 @@ class Client():
         # remove all temp files
         for file in os.listdir('temp'):
             os.remove('temp/' + file)
+
+        # file downloading
+        self.is_download = False
 
         self.setup()
 
@@ -100,14 +103,15 @@ class Client():
     def send_keep_alive(self):
         self.send_keep_alive_sock.settimeout(10)
         while True:
-            time.sleep(3)
+            time.sleep(5)
             # print('sending keep alive')
-            if send_timeout(self.send_keep_alive_sock, 'keepalive'.encode(), 3) == False:
+            if send_timeout(self.send_keep_alive_sock, 'keepalive'.encode(), 10) == False and self.is_download == False:
                 self.force_close()
                 break
 
-            data = recv_timeout(self.send_keep_alive_sock, 1024, 3).decode()
-            if data == '' or data == None:
+            data = recv_timeout(self.send_keep_alive_sock, 1024, 10)
+
+            if (data == '' or data == None) and self.is_download == False:
                 self.force_close()
                 break
 
@@ -176,7 +180,11 @@ class Client():
         data = ''
 
         while data != 'ready':
-            data = download_socket.recv(1024).decode()
+            try:
+                data = download_socket.recv(1024).decode()
+            except Exception as e:
+                print('Something went wrong')
+                return
         with open('repo/' + file_name,'rb') as file:
             file.seek(byte_offset)
             data = file.read()
@@ -228,7 +236,9 @@ class Client():
 
                 self.publish(arguments)
             elif command == 'fetch':
+                self.is_download = True
                 self.fetch(arguments)
+                self.is_download = False
 
     def list_out(self) -> None:
         """
@@ -458,7 +468,13 @@ class Client():
             @ Output: None
         """
         self.server_send_sock.settimeout(5)
-        self.server_send_sock.send('close'.encode())
+        try:
+            self.server_send_sock.send('close'.encode())
+        except Exception as e:
+            print('Server is offline at shutdown!')
+            self.close_sockets()
+            return
+        
         response = recv_timeout(self.server_send_sock, 1024, 10).decode()
         if response == '' or response == None:
             print('Server is offline at shutdown!')
@@ -476,7 +492,11 @@ def recv_timeout(socket: socket.socket, recv_size_byte, timeout=2) -> bytearray:
     socket.setblocking(False)
     ready = select.select([socket], [], [], timeout)
     if ready[0]:
-        data = socket.recv(recv_size_byte)
+        try:
+            data = socket.recv(recv_size_byte)
+        except Exception as e:
+            socket.setblocking(True)
+            return None
         socket.setblocking(True)
         return data
     else:
@@ -487,7 +507,11 @@ def send_timeout(socket: socket.socket, data: bytearray, timeout=2) -> bool:
     socket.setblocking(False)
     ready = select.select([], [socket], [], timeout)
     if ready[1]:
-        socket.send(data)
+        try:
+            socket.send(data)
+        except Exception as e:
+            socket.setblocking(True)
+            return False
         socket.setblocking(True)
         return True
     else:
