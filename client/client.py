@@ -18,7 +18,7 @@ class Client():
         self.server_send_sock.settimeout(10)
         # The upload address (listen forever for upload requests)
         self.upload_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.upload_sock.bind(('localhost', 0))
+        self.upload_sock.bind(('192.168.43.191', 0))
         self.upload_sock.listen(args.MAX_PARALLEL_DOWNLOADS)
 
         # The keep-alive sockets
@@ -53,6 +53,9 @@ class Client():
 
         # file downloading
         self.is_download = False
+
+        # file uploading
+        self.is_upload = False
 
         self.setup()
 
@@ -103,13 +106,13 @@ class Client():
     def send_keep_alive(self):
         self.send_keep_alive_sock.settimeout(10)
         while True:
-            time.sleep(5)
+            time.sleep(60)
             # print('sending keep alive')
-            if send_timeout(self.send_keep_alive_sock, 'keepalive'.encode(), 10) == False and self.is_download == False:
+            if send_timeout(self.send_keep_alive_sock, 'keepalive'.encode(), 20) == False and self.is_download == False:
                 self.force_close()
                 break
 
-            data = recv_timeout(self.send_keep_alive_sock, 1024, 10)
+            data = recv_timeout(self.send_keep_alive_sock, 1024, 20)
 
             if (data == '' or data == None) and self.is_download == False:
                 self.force_close()
@@ -188,7 +191,10 @@ class Client():
         with open('repo/' + file_name,'rb') as file:
             file.seek(byte_offset)
             data = file.read()
-            download_socket.sendall(data)
+            try:
+                download_socket.sendall(data)
+            except Exception as e:
+                return
 
     def cmd_forever(self):
         """
