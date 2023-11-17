@@ -40,6 +40,7 @@ Build a simple file-sharing application using the TCP/IP protocol stack with app
    ```bash
    cd 231-computer-network-assignment1
    ```
+3. Configure the IP and port that the server bind to and ensure that the IP and port that the client connect to matches that server IP and port, configure also the IP that the client upload socket bind to so that they can be reached from other clients for fetching files
 
 3. Run the server in folder ```server``` in a different terminal.
    ```bash
@@ -68,8 +69,9 @@ If you want to use server to ping client, please ping the sending address of the
 Currently only the client side have advanced commands.
 
 #### Client side
+1. `fetch fname1 fname2 fname3...`: Requests copies of the target files from other clients and adds them to the local repository multithreadedly.
 
-1. ```exit``` will exit the client side. Server side will acknowledge the disconnection of the client.
+1. ```close``` will close the client side. Server side will acknowledge the disconnection of the client.
 
 2. ```list``` will list the client side's repository files.
 
