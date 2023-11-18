@@ -51,6 +51,13 @@ class Client():
         for file in os.listdir('temp'):
             os.remove('temp/' + file)
 
+        # file downloading
+        self.is_download = False
+
+        # file uploading
+        self.num_uploads = 0
+        self.num_uploads_lock = threading.Lock()
+
         self.setup()
 
     def start(self) -> None:
@@ -100,16 +107,26 @@ class Client():
     def send_keep_alive(self):
         self.send_keep_alive_sock.settimeout(10)
         while True:
-            time.sleep(3)
+            time.sleep(60)
             # print('sending keep alive')
-            if send_timeout(self.send_keep_alive_sock, 'keepalive'.encode(), 3) == False:
-                self.force_close()
-                break
+            if send_timeout(self.send_keep_alive_sock, 'keepalive'.encode(), 20) == False and self.is_download == False:
+                self.num_uploads_lock.acquire()
+                if self.num_uploads == 0:
+                    self.num_uploads_lock.release()
+                    self.force_close()
+                    break
+                self.num_uploads_lock.release()
 
-            data = recv_timeout(self.send_keep_alive_sock, 1024, 3)
 
-            if data == '' or data == None:
-                self.force_close()
+            data = recv_timeout(self.send_keep_alive_sock, 1024, 20)
+
+            if (len(data) == 0 or data == None) and self.is_download == False:
+                self.num_uploads_lock.acquire()
+                if self.num_uploads == 0:
+                    self.num_uploads_lock.release()
+                    self.force_close()
+                    break
+                self.num_uploads_lock.release()
                 break
 
     def force_close(self):
@@ -130,7 +147,7 @@ class Client():
             except Exception as e:
                 break
             # print('Received:', data)
-            if data == '':
+            if len(data) == 0:
                 continue
             elif data == 'ping':
                 self.respond_ping()
@@ -161,6 +178,7 @@ class Client():
             request_offset = int(request_file_and_offset[1])
             thread = threading.Thread(target=self.upload, args=(request_file, request_offset, download_socket), daemon=True)
             thread.start()
+            self.mutate_num_uploads(1)
 
         
     def upload(self, file_name: str, byte_offset: int, download_socket: socket.socket) -> None:
@@ -181,11 +199,19 @@ class Client():
                 data = download_socket.recv(1024).decode()
             except Exception as e:
                 print('Something went wrong')
+                self.mutate_num_uploads(-1)
                 return
         with open('repo/' + file_name,'rb') as file:
             file.seek(byte_offset)
             data = file.read()
-            download_socket.sendall(data)
+            try:
+                download_socket.sendall(data)
+            except Exception as e:
+                self.mutate_num_uploads(-1)
+                return
+            
+        self.mutate_num_uploads(-1)
+
 
     def cmd_forever(self):
         """
@@ -233,7 +259,9 @@ class Client():
 
                 self.publish(arguments)
             elif command == 'fetch':
+                self.is_download = True
                 self.fetch(arguments)
+                self.is_download = False
 
     def list_out(self) -> None:
         """
@@ -263,17 +291,26 @@ class Client():
         if local_file_name not in os.listdir("local"):
             print('File ' + local_file_name + ' does not exist in your local folder!')
             return
+        
+        try:
+            self.server_send_sock.sendall(('publish ' + repo_file_name).encode())
+        except Exception as e:
+            print('Server is offline!')
+            return
+
+        data = recv_timeout(self.server_send_sock, 1024, 20)
+        if len(data) == 0 or data == None:
+            print('Server is offline, no response!')
+            return
+        
+        
+        data = data.decode()
+        print('Server response: ' + data + '\n')
 
         with open("local/" + local_file_name, "rb") as f:
             with open("repo/" + repo_file_name, "wb") as f1:
                 f1.write(f.read())
 
-        self.server_send_sock.send(('publish ' + repo_file_name).encode())
-
-        data = ''
-        while not data:
-            data = self.server_send_sock.recv(1024).decode()
-        print('Server response: ' + data + '\n')
 
 
     def fetch(self, filenames: list[str]) -> None:
@@ -292,13 +329,20 @@ class Client():
 
         # filter
         filenames = [filename for filename in filenames if filename not in os.listdir("repo")]
+        if len(filenames) == 0:
+            print('All files are already in your repository!')
+            return
+
         file_to_addrs: Dict[str, List[str]] = {}
         for filename in filenames:
             fetch_cmd = 'fetch ' + filename
             self.server_send_sock.send(fetch_cmd.encode())
             data = ''
-            while not data:
-                data = self.server_send_sock.recv(1024).decode()
+            data = recv_timeout(self.server_send_sock, 8000, 20)
+            if len(data) == 0 or data == None:
+                print('Server is offline, no response!')
+                return
+            data = data.decode()
             
             if data != 'null null':
                 addresses = data.split()
@@ -306,7 +350,7 @@ class Client():
                 file_to_addrs[filename] = addresses
 
         if len(file_to_addrs) == 0:
-            print('All files are already in your local folder!')
+            print('Found no peer to download!')
             return
         
         for i, (filename, addrs) in enumerate(file_to_addrs.items()):
@@ -380,10 +424,11 @@ class Client():
             sock.send((file_name + ' ' + str(0)).encode())
         else:
             sock.send((file_name + ' ' + str(self.unfinished_downloads[file_name].current_size)).encode())
-        data = recv_timeout(sock, 1024, 20).decode()
-        if data == '' or data == None:
+        data = recv_timeout(sock, 1024, 20)
+        if len(data) == 0 or data == None:
             print('Couldn\'t receive the file size of file ' + file_name + ' from peer ' + upload_address[0] + ' ' + upload_address[1] + ', aborting...')
             return False
+        data = data.decode()
         file_size = int(data)
 
         try:
@@ -408,7 +453,7 @@ class Client():
                 file.seek(self.unfinished_downloads[file_name].current_size)
             while received_bytes < file_size:
                 data = recv_timeout(sock, 65536, 60)
-                if data == None or data == '':
+                if data == None or len(data) == 0:
                     print('Connection to peer ' + upload_address[0] + ' ' + upload_address[1] + ' is lost while downloading!')
                     if full_download:
                         self.unfinished_downloads[file_name] = File(file_name, file_size, received_bytes)
@@ -483,6 +528,11 @@ class Client():
         self.upload_sock.close()
         self.send_keep_alive_sock.close()
 
+    def mutate_num_uploads(self, num: int) -> None:
+        self.num_uploads_lock.acquire()
+        self.num_uploads += num
+        self.num_uploads_lock.release()
+
 def recv_timeout(socket: socket.socket, recv_size_byte, timeout=2) -> bytearray:
     socket.setblocking(False)
     ready = select.select([socket], [], [], timeout)
@@ -532,9 +582,9 @@ def main():
     except socket.timeout as t:
         print("Connection timeout")
         client.close_sockets()
-    # except Exception as e:
-    #     client.close()
-    #     print(f'[Exception] Caught exception in the process: {e}')
+    except Exception as e:
+        client.close()
+        print(f'[Exception] Caught exception in the process: {e}')
     
 if __name__ == '__main__':
     main()
