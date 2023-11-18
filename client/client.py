@@ -274,17 +274,25 @@ class Client():
         if local_file_name not in os.listdir("local"):
             print('File ' + local_file_name + ' does not exist in your local folder!')
             return
+        
+        try:
+            self.server_send_sock.sendall(('publish ' + repo_file_name).encode())
+        except Exception as e:
+            print('Server is offline!')
+            return
+
+        data = recv_timeout(self.server_send_sock, 1024, 20)
+        if data == '' or data == None:
+            print('Server is offline, no response!')
+            return
+        
+        data = data.decode()
+        print('Server response: ' + data + '\n')
 
         with open("local/" + local_file_name, "rb") as f:
             with open("repo/" + repo_file_name, "wb") as f1:
                 f1.write(f.read())
 
-        self.server_send_sock.send(('publish ' + repo_file_name).encode())
-
-        data = ''
-        while not data:
-            data = self.server_send_sock.recv(1024).decode()
-        print('Server response: ' + data + '\n')
 
 
     def fetch(self, filenames: list[str]) -> None:
