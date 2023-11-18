@@ -319,7 +319,7 @@ class Client():
             self.server_send_sock.send(fetch_cmd.encode())
             data = ''
             while not data:
-                data = self.server_send_sock.recv(1024).decode()
+                data = self.server_send_sock.recv(8000).decode()
             
             if data != 'null null':
                 addresses = data.split()

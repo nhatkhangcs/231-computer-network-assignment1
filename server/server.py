@@ -50,7 +50,7 @@ class Server:
 
             data = ''
             while True:
-                data = client_socket.recv(1024).decode()
+                data = client_socket.recv(8000).decode()
                 if data != '':
                     break
             
@@ -321,19 +321,23 @@ class Server:
             # retrieve the client info
             client_info: ClientInfo = self.client_infos[address]
             # send ping to sending_socket
-            client_info.get_sending_sock().send('ping'.encode())
-            Time1 = time.time()
-            data = ""
-            while not data:
-                # get latency time
-                latency = time.time() - Time1
-                if latency > 5:
-                    print('Request timed out')
-                    self.client_infos.pop(address)
-                    return
+            try:
+                client_info.get_sending_sock().send('ping'.encode())
+            except Exception as e:
+                print('Client is offline')
+                return
+            start = time.time()
+            data = recv_timeout(client_info.get_sending_sock(), 1024, 5)
+            if len(data) == 0 or data == None:
+                print('Request timed out')
+                self.client_infos.pop(address)
+                return
+            
+            end = time.time()
+            latency = end - start
+            data = data.decode()
 
-                data = client_info.get_sending_sock().recv(1024).decode()
-            print("Response latency: " + str(int(round(latency * 1000))))
+            print("Response latency: " + str(round(latency * 1000)) + "ms")
             print(data)
 
         else:
@@ -351,9 +355,19 @@ class Server:
             # retrieve the client info
             client_info: ClientInfo = self.client_infos[address]
             # send ping to sending_socket
-            client_info.get_sending_sock().send('discover'.encode())
+            try:
+                client_info.get_sending_sock().send('discover'.encode())
+            except Exception as e:
+                print('Client is offline')
+                self.client_infos.pop(address)
+                return
             # wait for response
-            response = client_info.get_sending_sock().recv(1024).decode().split()
+            response = recv_timeout(client_info.get_sending_sock(), 8000, 10)
+            if len(response) == 0 or response == None:
+                print('Request timed out')
+                self.client_infos.pop(address)
+                return
+            response = response.decode().split()
             print('----------------------------------')
             for file in response:
                 print(file)
