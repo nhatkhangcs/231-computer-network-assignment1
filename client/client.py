@@ -288,7 +288,6 @@ class Client():
         
         
         data = data.decode()
-        print('Response length: ' + str(len(data)))
         print('Server response: ' + data + '\n')
 
         with open("local/" + local_file_name, "rb") as f:
