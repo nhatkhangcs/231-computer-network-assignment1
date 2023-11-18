@@ -10,7 +10,7 @@ from typing import List, Dict
 import time
 
 class Client():
-    def __init__(self, server_host='192.168.43.191', server_port=50004) -> None:
+    def __init__(self, server_host='localhost', server_port=50004) -> None:
         # the socket to listen to server messages
         self.server_listen_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # the socket to send messages to the server
@@ -18,7 +18,7 @@ class Client():
         self.server_send_sock.settimeout(10)
         # The upload address (listen forever for upload requests)
         self.upload_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.upload_sock.bind(('192.168.43.191', 0))
+        self.upload_sock.bind(('localhost', 0))
         self.upload_sock.listen(args.MAX_PARALLEL_DOWNLOADS)
 
         # The keep-alive sockets
@@ -114,7 +114,7 @@ class Client():
 
             data = recv_timeout(self.send_keep_alive_sock, 1024, 20)
 
-            if (data == '' or data == None) and self.is_download == False:
+            if (len(data) == 0 or data == None) and self.is_download == False:
                 self.force_close()
                 break
 
@@ -136,7 +136,7 @@ class Client():
             except Exception as e:
                 break
             # print('Received:', data)
-            if data == '':
+            if len(data) == 0:
                 continue
             elif data == 'ping':
                 self.respond_ping()
@@ -282,11 +282,13 @@ class Client():
             return
 
         data = recv_timeout(self.server_send_sock, 1024, 20)
-        if data == '' or data == None:
+        if len(data) == 0 or data == None:
             print('Server is offline, no response!')
             return
         
+        
         data = data.decode()
+        print('Response length: ' + str(len(data)))
         print('Server response: ' + data + '\n')
 
         with open("local/" + local_file_name, "rb") as f:
@@ -399,10 +401,11 @@ class Client():
             sock.send((file_name + ' ' + str(0)).encode())
         else:
             sock.send((file_name + ' ' + str(self.unfinished_downloads[file_name].current_size)).encode())
-        data = recv_timeout(sock, 1024, 20).decode()
-        if data == '' or data == None:
+        data = recv_timeout(sock, 1024, 20)
+        if len(data) == 0 or data == None:
             print('Couldn\'t receive the file size of file ' + file_name + ' from peer ' + upload_address[0] + ' ' + upload_address[1] + ', aborting...')
             return False
+        data = data.decode()
         file_size = int(data)
 
         try:
@@ -427,7 +430,7 @@ class Client():
                 file.seek(self.unfinished_downloads[file_name].current_size)
             while received_bytes < file_size:
                 data = recv_timeout(sock, 65536, 60)
-                if data == None or data == '':
+                if data == None or len(data) == 0:
                     print('Connection to peer ' + upload_address[0] + ' ' + upload_address[1] + ' is lost while downloading!')
                     if full_download:
                         self.unfinished_downloads[file_name] = File(file_name, file_size, received_bytes)

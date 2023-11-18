@@ -8,7 +8,7 @@ from typing import Dict
 import time
 
 class Server:     
-    def __init__(self, host='192.168.43.191', port=50004) -> None:
+    def __init__(self, host='localhost', port=50004) -> None:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.bind((host, port))
         self.sock.listen(args.MAX_CLIENTS)
