@@ -55,7 +55,8 @@ class Client():
         self.is_download = False
 
         # file uploading
-        self.is_upload = False
+        self.num_uploads = 0
+        self.num_uploads_lock = threading.Lock()
 
         self.setup()
 
@@ -109,13 +110,23 @@ class Client():
             time.sleep(60)
             # print('sending keep alive')
             if send_timeout(self.send_keep_alive_sock, 'keepalive'.encode(), 20) == False and self.is_download == False:
-                self.force_close()
-                break
+                self.num_uploads_lock.acquire()
+                if self.num_uploads == 0:
+                    self.num_uploads_lock.release()
+                    self.force_close()
+                    break
+                self.num_uploads_lock.release()
+
 
             data = recv_timeout(self.send_keep_alive_sock, 1024, 20)
 
             if (len(data) == 0 or data == None) and self.is_download == False:
-                self.force_close()
+                self.num_uploads_lock.acquire()
+                if self.num_uploads == 0:
+                    self.num_uploads_lock.release()
+                    self.force_close()
+                    break
+                self.num_uploads_lock.release()
                 break
 
     def force_close(self):
@@ -167,6 +178,7 @@ class Client():
             request_offset = int(request_file_and_offset[1])
             thread = threading.Thread(target=self.upload, args=(request_file, request_offset, download_socket), daemon=True)
             thread.start()
+            self.mutate_num_uploads(1)
 
         
     def upload(self, file_name: str, byte_offset: int, download_socket: socket.socket) -> None:
@@ -187,6 +199,7 @@ class Client():
                 data = download_socket.recv(1024).decode()
             except Exception as e:
                 print('Something went wrong')
+                self.mutate_num_uploads(-1)
                 return
         with open('repo/' + file_name,'rb') as file:
             file.seek(byte_offset)
@@ -194,7 +207,11 @@ class Client():
             try:
                 download_socket.sendall(data)
             except Exception as e:
+                self.mutate_num_uploads(-1)
                 return
+            
+        self.mutate_num_uploads(-1)
+
 
     def cmd_forever(self):
         """
@@ -510,6 +527,11 @@ class Client():
         self.server_send_sock.close()
         self.upload_sock.close()
         self.send_keep_alive_sock.close()
+
+    def mutate_num_uploads(self, num: int) -> None:
+        self.num_uploads_lock.acquire()
+        self.num_uploads += num
+        self.num_uploads_lock.release()
 
 def recv_timeout(socket: socket.socket, recv_size_byte, timeout=2) -> bytearray:
     socket.setblocking(False)
