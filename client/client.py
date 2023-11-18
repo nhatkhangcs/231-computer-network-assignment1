@@ -313,6 +313,10 @@ class Client():
 
         # filter
         filenames = [filename for filename in filenames if filename not in os.listdir("repo")]
+        if len(filenames) == 0:
+            print('All files are already in your repository!')
+            return
+
         file_to_addrs: Dict[str, List[str]] = {}
         for filename in filenames:
             fetch_cmd = 'fetch ' + filename
@@ -330,7 +334,7 @@ class Client():
                 file_to_addrs[filename] = addresses
 
         if len(file_to_addrs) == 0:
-            print('All files are already in your local folder!')
+            print('Found no peer to download!')
             return
         
         for i, (filename, addrs) in enumerate(file_to_addrs.items()):
