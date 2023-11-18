@@ -551,9 +551,9 @@ def main():
     except socket.timeout as t:
         print("Connection timeout")
         client.close_sockets()
-    # except Exception as e:
-    #     client.close()
-    #     print(f'[Exception] Caught exception in the process: {e}')
+    except Exception as e:
+        client.close()
+        print(f'[Exception] Caught exception in the process: {e}')
     
 if __name__ == '__main__':
     main()
