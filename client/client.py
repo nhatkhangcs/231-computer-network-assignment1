@@ -318,8 +318,11 @@ class Client():
             fetch_cmd = 'fetch ' + filename
             self.server_send_sock.send(fetch_cmd.encode())
             data = ''
-            while not data:
-                data = self.server_send_sock.recv(8000).decode()
+            data = recv_timeout(self.server_send_sock, 8000, 20)
+            if len(data) == 0 or data == None:
+                print('Server is offline, no response!')
+                return
+            data = data.decode()
             
             if data != 'null null':
                 addresses = data.split()
