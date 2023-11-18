@@ -53,7 +53,7 @@ class Client():
 
         self.setup()
 
-    def start(self):
+    def start(self) -> None:
         """
             @ Description: This function starts all the threads parallelly and wait for joining
             @ Input: None
@@ -65,7 +65,7 @@ class Client():
         self.send_keep_alive_thread.start()
         self.cmd_forever()
 
-    def setup(self):
+    def setup(self) -> None:
         """
             @ Description: This function sets up the connection between this client and server
             @ Input: None
@@ -106,7 +106,8 @@ class Client():
                 self.force_close()
                 break
 
-            data = recv_timeout(self.send_keep_alive_sock, 1024, 3).decode()
+            data = recv_timeout(self.send_keep_alive_sock, 1024, 3)
+
             if data == '' or data == None:
                 self.force_close()
                 break
@@ -162,7 +163,7 @@ class Client():
             thread.start()
 
         
-    def upload(self, file_name: str, byte_offset: int, download_socket: socket.socket):
+    def upload(self, file_name: str, byte_offset: int, download_socket: socket.socket) -> None:
         """
             @ Description: This function upload the file to other peers
             @ Input: 
@@ -176,7 +177,11 @@ class Client():
         data = ''
 
         while data != 'ready':
-            data = download_socket.recv(1024).decode()
+            try:
+                data = download_socket.recv(1024).decode()
+            except Exception as e:
+                print('Something went wrong')
+                return
         with open('repo/' + file_name,'rb') as file:
             file.seek(byte_offset)
             data = file.read()
@@ -191,6 +196,7 @@ class Client():
         """
         while True:
             input_str = input('>> ')
+            if input_str == '': continue
             pattern = r'^\s*\b(?:publish|fetch|close|list)\b'
             matched = re.search(pattern, input_str)
 
@@ -229,7 +235,7 @@ class Client():
             elif command == 'fetch':
                 self.fetch(arguments)
 
-    def list_out(self):
+    def list_out(self) -> None:
         """
             @ Description: This function execute the 'list' command
             @ Input: None
@@ -237,11 +243,14 @@ class Client():
             @ Output: Execute the 'list' command and receive respond from the server
         """
         dir_list = os.listdir("repo")
-        print('List of files in repo:')
+        print('----------------------------------')
         for file in dir_list:
             print(file)
+        
+        print('----------------------------------')
+        print()
 
-    def publish(self, arguments):
+    def publish(self, arguments) -> None:
         """
             @ Description: This function execute the 'publish' command
             @ Input: arguments - the list of 2 elements, the first is <lname>, second is <fname> (check the Assignment)  
@@ -267,7 +276,7 @@ class Client():
         print('Server response: ' + data + '\n')
 
 
-    def fetch(self, filenames: list[str]):
+    def fetch(self, filenames: list[str]) -> None:
         """
             @ Description: This function execute the 'fetch' command (multithreaded)
             @ Input: arguments - the list of file names to download, comes in the form
@@ -280,13 +289,11 @@ class Client():
                 <upload peer 1 IP> <upload peer 1 port> <upload peer 2 IP> <upload peer 2 port> ...
                 with  <upload peer i IP> <upload peer i port> correspond to the file i
         """
+
+        # filter
         filenames = [filename for filename in filenames if filename not in os.listdir("repo")]
-        if len(filenames) == 0:
-            return
-        
         file_to_addrs: Dict[str, List[str]] = {}
         for filename in filenames:
-
             fetch_cmd = 'fetch ' + filename
             self.server_send_sock.send(fetch_cmd.encode())
             data = ''
@@ -298,6 +305,10 @@ class Client():
                 addresses = [addresses[n:n + 2] for n in range(0, len(addresses), 2)]
                 file_to_addrs[filename] = addresses
 
+        if len(file_to_addrs) == 0:
+            print('All files are already in your local folder!')
+            return
+        
         for i, (filename, addrs) in enumerate(file_to_addrs.items()):
             print('Available peers for file ' + filename + ':')
             for addr in addrs:
@@ -309,20 +320,18 @@ class Client():
             self.handle_download(filename, addrs, 0)
             return
         
-        
         download_threads = []
         for i, (filename, addrs) in enumerate(file_to_addrs.items()):
             download_threads.append(threading.Thread(target=self.handle_download, args=[filename, addrs, i], daemon=True))
             download_threads[i].start()
             
-        
         for thread in download_threads:
             thread.join()
 
         sys.stdout.flush()
-        print('\n\n')
+        print()
 
-    def handle_download(self, filename: str, upload_addresses: List[str], position: int):
+    def handle_download(self, filename: str, upload_addresses: List[str], position: int) -> None:
         """
             @ Description: This function handle the download of a single file
             @ Input: 
@@ -332,6 +341,7 @@ class Client():
             @ Return: None
             @ Output: Download the file sucessfully
         """
+        download_success = False
         for upload_address in upload_addresses:
             download_success = self.download(filename, upload_address, position)
             if download_success:
@@ -445,7 +455,7 @@ class Client():
         dir_list = os.listdir("repo")
         self.server_listen_sock.sendall(' '.join(dir_list).encode())
 
-    def close(self):
+    def close(self) -> None:
         """
             @ Description: This function close all sockets and notify the server
             @ Input: None
@@ -453,7 +463,13 @@ class Client():
             @ Output: None
         """
         self.server_send_sock.settimeout(5)
-        self.server_send_sock.send('close'.encode())
+        try:
+            self.server_send_sock.send('close'.encode())
+        except Exception as e:
+            print('Server is offline at shutdown!')
+            self.close_sockets()
+            return
+        
         response = recv_timeout(self.server_send_sock, 1024, 10).decode()
         if response == '' or response == None:
             print('Server is offline at shutdown!')
@@ -461,39 +477,47 @@ class Client():
             print('Server response: ' + response)
         self.close_sockets()
     
-    def close_sockets(self):
+    def close_sockets(self) -> None:
         self.server_listen_sock.close()
         self.server_send_sock.close()
         self.upload_sock.close()
         self.send_keep_alive_sock.close()
 
-class File():
-    def __init__(self, file_name, full_size_bytes, current_size_bytes) -> None:
-        self.file_name = file_name
-        self.full_size = full_size_bytes
-        self.current_size = current_size_bytes
-
 def recv_timeout(socket: socket.socket, recv_size_byte, timeout=2) -> bytearray:
     socket.setblocking(False)
     ready = select.select([socket], [], [], timeout)
     if ready[0]:
-        data = socket.recv(recv_size_byte)
+        try:
+            data = socket.recv(recv_size_byte)
+        except Exception as e:
+            socket.setblocking(True)
+            return None
         socket.setblocking(True)
         return data
     else:
         socket.setblocking(True)
         return None
     
-def send_timeout(socket: socket.socket, data: bytearray, timeout=2):
+def send_timeout(socket: socket.socket, data: bytearray, timeout=2) -> bool:
     socket.setblocking(False)
     ready = select.select([], [socket], [], timeout)
     if ready[1]:
-        socket.send(data)
+        try:
+            socket.send(data)
+        except Exception as e:
+            socket.setblocking(True)
+            return False
         socket.setblocking(True)
         return True
     else:
         socket.setblocking(True)
         return False
+    
+class File():
+    def __init__(self, file_name, full_size_bytes, current_size_bytes) -> None:
+        self.file_name = file_name
+        self.full_size = full_size_bytes
+        self.current_size = current_size_bytes
 
 def main():
     client = Client()

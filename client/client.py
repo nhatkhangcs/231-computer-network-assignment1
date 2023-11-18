@@ -18,7 +18,7 @@ class Client():
         self.server_send_sock.settimeout(10)
         # The upload address (listen forever for upload requests)
         self.upload_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.upload_sock.bind(('192.168.43.191', 0))
+        self.upload_sock.bind(('localhost', 0))
         self.upload_sock.listen(args.MAX_PARALLEL_DOWNLOADS)
 
         # The keep-alive sockets
