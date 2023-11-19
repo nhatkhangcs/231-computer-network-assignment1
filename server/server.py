@@ -379,8 +379,8 @@ class Server:
 class ClientInfo():
     def __init__(self, identifying_address=None, identifying_sock=None, 
                  sending_address=None, sending_sock=None, upload_address=None, 
-                 listening_thread=None, files=None, listen_keep_alive_sock=None, send_keep_alive_sock=None,
-                 listen_keep_alive_thread=None, send_keep_alive_thread=None) -> None:
+                 listening_thread=None, files=None, listen_keep_alive_sock=None,
+                 listen_keep_alive_thread=None) -> None:
         self.identifying_address = identifying_address
         self.identifying_sock = identifying_sock
         self.sending_address = sending_address
@@ -389,9 +389,7 @@ class ClientInfo():
         self.listening_thread = listening_thread
         self.files = files
         self.listen_keep_alive_sock = listen_keep_alive_sock
-        self.send_keep_alive_sock = send_keep_alive_sock
         self.listen_keep_alive_thread = listen_keep_alive_thread
-        self.send_keep_alive_thread = send_keep_alive_thread
 
     def get_sending_sock(self) -> socket.socket:
         return self.sending_sock
