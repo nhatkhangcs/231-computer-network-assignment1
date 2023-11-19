@@ -23,7 +23,6 @@ class Client():
 
         # The keep-alive sockets
         self.send_keep_alive_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.listen_keep_alive_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         # server info
         self.server_host = server_host
