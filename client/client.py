@@ -19,7 +19,7 @@ class Client():
         # The upload address (listen forever for upload requests)
         self.upload_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.upload_sock.bind((upload_IP, 0))
-        self.upload_sock.listen(args.MAX_PARALLEL_DOWNLOADS)
+        self.upload_sock.listen(args.DOWNLOAD_QUEUE_LENGTH)
 
         # The keep-alive sockets
         self.send_keep_alive_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
