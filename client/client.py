@@ -104,6 +104,12 @@ class Client():
         print('Upload address: ' + self.upload_sock.getsockname()[0] + ' ' + str(self.upload_sock.getsockname()[1]))
     
     def send_keep_alive(self):
+        """
+            @ Description: This function sends keep-alive messages to server
+            @ Input: None
+            @ Return: None
+            @ Output: None
+        """
         self.send_keep_alive_sock.settimeout(10)
         while True:
             time.sleep(60)
