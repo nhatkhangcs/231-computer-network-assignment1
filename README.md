@@ -66,14 +66,15 @@ If you want to use server to ping client, please ping the sending address of the
 
 ### Advanced commands in the application
 
-Currently only the client side have advanced commands.
-
 #### Client side
 1. `fetch fname1 fname2 fname3...`: Requests copies of the target files from other clients and adds them to the local repository multithreadedly.
 
-1. ```close``` will close the client side. Server side will acknowledge the disconnection of the client.
+2. ```close``` will close the client side. Server side will acknowledge the disconnection of the client.
 
-2. ```list``` will list the client side's repository files.
+3. ```list``` will list the client side's repository files.
+
+#### Server side
+1. ```list``` will list the currently connecting clients.
 
 # Contributing
 If you'd like to contribute, please fork the repository and create a pull request.
