@@ -523,11 +523,11 @@ class Client():
             self.close_sockets()
             return
         
-        response = recv_timeout(self.server_send_sock, 1024, 10).decode()
-        if response == '' or response == None:
+        response = recv_timeout(self.server_send_sock, 1024, 10)
+        if len(response) == 0 or response == None:
             print('Server is offline at shutdown!')
-        elif response == 'done':
-            print('Server response: ' + response)
+        elif response.decode() == 'done':
+            print('Server response: ' + response.decode())
         self.close_sockets()
     
     def close_sockets(self) -> None:
