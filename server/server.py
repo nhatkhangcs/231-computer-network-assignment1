@@ -328,16 +328,17 @@ class Server:
                 return
             start = time.time()
             data = recv_timeout(client_info.get_sending_sock(), 1024, 5)
+            end = time.time()
+            
             if len(data) == 0 or data == None:
                 print('Request timed out')
                 self.client_infos.pop(address)
                 return
             
-            end = time.time()
             latency = end - start
             data = data.decode()
 
-            print("Response latency: " + str(round(latency * 1000)) + "ms")
+            print(f"Response latency: {latency*1000:0.3f} ms")
             print(data)
 
         else:
