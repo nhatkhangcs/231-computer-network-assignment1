@@ -17,13 +17,13 @@ Build a simple file-sharing application using the TCP/IP protocol stack with app
 
 ### Client command-shell interpreter
 - Clients have a simple command-shell interpreter with two commands:
-  1. `publish lname fname`: Adds a local file (`lname`) to the client's repository with the name `fname`. This information is conveyed to the server
-  2. `fetch fname`: Requests a copy of the target file from other clients and adds it to the local repository.
+  1. `publish lname fname`: Adds a local file (`lname`) to the client's repository with the name `fname`. This information is conveyed to the server. For example, `publish test.txt file.txt`
+  2. `fetch fname`: Requests a copy of the target file from other clients and adds it to the local repository. For example, `fetch file.txt`
 
 ### Server command-shell interpreter
 - The server has a command-shell interpreter with two commands:
-  1. `discover hostname`: Discovers the list of local files of the host named `hostname`.
-  2. `ping hostname`: Live-checks the host named `hostname`.
+  1. `discover hostname`: Discovers the list of local files of the host named `hostname`, with `hostname` is the IP and port seperated by a whitespace. For example, `discover 192.168.1.8 50004`
+  2. `ping hostname`: Live-checks the host named `hostname`. For example, `ping 192.168.1.8 50004`
 
 ## Getting started
 
