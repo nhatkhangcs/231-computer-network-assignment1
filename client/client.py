@@ -10,7 +10,7 @@ from typing import List, Dict
 import time
 
 class Client():
-    def __init__(self, server_host='localhost', server_port=50004) -> None:
+    def __init__(self, server_host='localhost', server_port=50004, upload_IP='localhost') -> None:
         # the socket to listen to server messages
         self.server_listen_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # the socket to send messages to the server
@@ -18,7 +18,7 @@ class Client():
         self.server_send_sock.settimeout(10)
         # The upload address (listen forever for upload requests)
         self.upload_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.upload_sock.bind(('localhost', 0))
+        self.upload_sock.bind((upload_IP, 0))
         self.upload_sock.listen(args.MAX_PARALLEL_DOWNLOADS)
 
         # The keep-alive sockets
