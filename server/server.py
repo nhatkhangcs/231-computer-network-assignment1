@@ -112,6 +112,14 @@ class Server:
 
 
     def listen_keep_alive(self, client_socket: socket.socket, client_address: str) -> None:
+        """
+            @ Description: This function listens for keep alive messages from client and respond to them
+            @ Input:
+                1) client_socket: the socket that the server uses to communicate with the client
+                2) client_address: the address of the client
+            @ Return: None
+            @ Output: None
+        """
         client_socket.settimeout(3)
         try:
             while True:
@@ -140,7 +148,9 @@ class Server:
     def serve_client(self, client_socket: socket.socket, client_address: str):
         """
             @ Description: This function listen for clients requests and respond to them
-            @ Input: None
+            @ Input:
+                1) client_socket: the socket that the server uses to communicate with the client
+                2) client_address: the address of the client
             @ Return: None
             @ Output: None
         """
@@ -167,6 +177,14 @@ class Server:
 
 
     def remove_client(self, client_address: str, send_response=True) -> None:
+        """
+            @ Description: This function removes the client from the list of clients
+            @ Input:
+                1) client_address: the address of the client
+                2) send_response: whether or not to send a response to the client
+            @ Return: None
+            @ Output: None
+        """
         if send_response:
             self.client_infos[client_address].get_identifying_sock().send('done'.encode())
         self.client_infos[client_address].get_identifying_sock().close()
@@ -176,6 +194,14 @@ class Server:
 
 
     def respond_update(self, client_address: str, file_names: list[str]) -> None:
+        """
+            @ Description: This function updates the list of files of the client
+            @ Input:
+                1) client_address: the address of the client
+                2) file_names: the list of files of the client
+            @ Return: None
+            @ Output: None
+        """
         if client_address in self.client_infos.keys():
             self.client_infos[client_address].files = file_names
 
@@ -183,11 +209,12 @@ class Server:
     def respond_fetch(self, client_address: str, file_names: list[str]) -> str:
         """
             @ Description: This function returns the list of peers' address that the client can connect to download 
-            @ Input: None
+            @ Input:
+                1) client_address: the address of the client
+                2) file_names: the list of files that the client wants to download
             @ Return: the list of peers for downloading, in the form
                 <upload peer 1 IP> <upload peer 1 port> <upload peer 2 IP> <upload peer 2 port> ...
-                with  <upload peer i IP> <upload peer i port> correspond to the file i. IF a file doesn't exist, put 'null'
-                in <upload peer i IP> and <upload peer i port>
+                with  <upload peer i IP> <upload peer i port> correspond to the file. If the file doesn't exist, return "null null"
             @ Output: None
         """
         file_name = file_names[0]
@@ -208,7 +235,9 @@ class Server:
     def respond_publish(self, client_address: str, repo_file_name: str) -> str:
         """
             @ Description: This process the client's 'publish' command and send a response to acknowledge the client
-            @ Input: None
+            @ Input:
+                1) client_address: the address of the client
+                2) repo_file_name: the file that the client wants to publish
             @ Return: the response in string data type
             @ Output: Update the files data structure of the corresponding ClientInfo object
         """
@@ -304,6 +333,12 @@ class Server:
             print()
 
     def list_out(self) -> None:
+        """
+            @ Description: This function list out all the current clients
+            @ Input: None
+            @ Return: None
+            @ Output: print the response to the screen
+        """
         # list out all the current clients
         for client_address in self.client_infos.keys():
             print(str(client_address))
@@ -311,7 +346,9 @@ class Server:
     def ping(self, IP: str, port: int) -> None:
         """
             @ Description: This function pings the client, with timeout
-            @ Input: None
+            @ Input:
+                1) IP: the IP address of the client
+                2) port: the port number of the client
             @ Return: None
             @ Output: print the response to the screen
         """
@@ -329,7 +366,7 @@ class Server:
             start = time.time()
             data = recv_timeout(client_info.get_sending_sock(), 1024, 5)
             end = time.time()
-            
+
             if len(data) == 0 or data == None:
                 print('Request timed out')
                 self.client_infos.pop(address)
@@ -347,7 +384,9 @@ class Server:
     def discover(self, IP: str, port: int) -> None:
         """
             @ Description: This function discover the client
-            @ Input: None
+            @ Input:
+                1) IP: the IP address of the client
+                2) port: the port number of the client
             @ Return: None
             @ Output: print the response to the screen
         """
