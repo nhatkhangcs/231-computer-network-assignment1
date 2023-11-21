@@ -56,7 +56,7 @@ Build a simple file-sharing application using the TCP/IP protocol stack with app
 
 **More description**: On the client terminal, you will see 3 different addresses:
 
-- ```Sending address```: This is the address that is sending the request to the server.
+- ```Sending address```: This is the address that is sending the request to the server. Server ```ping``` and ```discover``` to this address.
 
 - ```Listening address```: This is the address that is listening requests from server.
 
