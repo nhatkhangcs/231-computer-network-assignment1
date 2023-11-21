@@ -104,6 +104,12 @@ class Client():
         print('Upload address: ' + self.upload_sock.getsockname()[0] + ' ' + str(self.upload_sock.getsockname()[1]))
     
     def send_keep_alive(self):
+        """
+            @ Description: This function sends keep-alive messages to server
+            @ Input: None
+            @ Return: None
+            @ Output: None
+        """
         self.send_keep_alive_sock.settimeout(10)
         while True:
             time.sleep(60)
@@ -129,6 +135,12 @@ class Client():
                 break
 
     def force_close(self):
+        """
+            @ Description: This function force close the client
+            @ Input: None
+            @ Return: None
+            @ Output: None
+        """
         self.close_sockets()
         print('Connection to server is lost, shutting down...')
         os._exit(0)
@@ -321,9 +333,6 @@ class Client():
             @ Output: Execute the 'fetch' command and download the files sucessfully
             @ Additional notes: 
                 1) If the number of files > 1, open threads to handle download parralelly
-                2) After sending fetch requests to the server, the server will response in the form
-                <upload peer 1 IP> <upload peer 1 port> <upload peer 2 IP> <upload peer 2 port> ...
-                with  <upload peer i IP> <upload peer i port> correspond to the file i
         """
 
         # filter
@@ -522,12 +531,24 @@ class Client():
         self.close_sockets()
     
     def close_sockets(self) -> None:
+        """
+            @ Description: This function close all sockets
+            @ Input: None
+            @ Return: None
+            @ Output: None
+        """
         self.server_listen_sock.close()
         self.server_send_sock.close()
         self.upload_sock.close()
         self.send_keep_alive_sock.close()
 
     def mutate_num_uploads(self, num: int) -> None:
+        """
+            @ Description: This function mutate the number of uploads
+            @ Input: num - the number to add to the current number of uploads
+            @ Return: None
+            @ Output: None
+        """
         self.num_uploads_lock.acquire()
         self.num_uploads += num
         self.num_uploads_lock.release()
